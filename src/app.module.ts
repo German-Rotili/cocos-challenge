@@ -6,7 +6,9 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
 @Module({
-  imports: [TypeOrmModule.forRoot(buildDataSourceOptions(process.env.DATABASE_URL)),],
+  imports: [
+    TypeOrmModule.forRoot(buildDataSourceOptions(process.env.DATABASE_URL)),
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

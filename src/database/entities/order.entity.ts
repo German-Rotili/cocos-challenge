@@ -1,4 +1,11 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { Instrument } from './instrument.entity';
 import { User } from './user.entity';
 import { decimalTransformer } from './transformers';
@@ -29,7 +36,13 @@ export class Order {
   /** Cantidad de acciones (o monto en ARS para CASH_IN / CASH_OUT). */
   @Column({ type: 'int' })
   size!: number;
-  @Column({ type: 'numeric', precision: 14, scale: 2, nullable: true, transformer: decimalTransformer })
+  @Column({
+    type: 'numeric',
+    precision: 14,
+    scale: 2,
+    nullable: true,
+    transformer: decimalTransformer,
+  })
   price!: number | null;
   @Column({ type: 'timestamp' })
   datetime!: Date;

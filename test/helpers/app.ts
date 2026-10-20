@@ -1,6 +1,9 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { DataSource } from 'typeorm';
 import { AppModule } from '../../src/app.module';
+import { world } from './world';
+
 export async function createTestApp(): Promise<INestApplication> {
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
@@ -12,16 +15,20 @@ export async function createTestApp(): Promise<INestApplication> {
   return app;
 }
 
-export function useTestApp(resetDatabase: () => Promise<void>) {
-  const { world } = require('./world');
+export function useTestApp(): void {
+  const reset = () => resetDatabase(world.app.get(DataSource));
+
   beforeAll(async () => {
     world.app = await createTestApp();
   });
   beforeEach(async () => {
     world.reset();
-    await resetDatabase();
+    await reset();
   });
   afterAll(async () => {
-    await world.app?.close();
+    if (world.app) {
+      await reset();
+      await world.app.close();
+    }
   });
 }

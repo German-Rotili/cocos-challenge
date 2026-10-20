@@ -3,13 +3,13 @@ export type OrderStatus = 'NEW' | 'FILLED' | 'REJECTED' | 'CANCELLED';
 export type OrderType = 'MARKET' | 'LIMIT';
 
 export interface Order {
-    id: number;
-    instrumentId: number;
-    userId: number;
-    side: OrderSide;
-    size: number;
-    price: number;
-    type: OrderType;
-    status: OrderStatus;
-    datetime: Date;
+  id: number;
+  instrumentId: number;
+  userId: number;
+  side: OrderSide;
+  size: number;
+  price: number;
+  type: OrderType;
+  status: OrderStatus;
+  datetime: Date;
 }
