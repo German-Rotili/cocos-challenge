@@ -1,6 +1,5 @@
 import request, { Response } from 'supertest';
-import { world } from './world';
-import { Instrument } from 'src/database/entities';
+import { KnownInstrument, world } from './world';
 
 const http = () => request(world.app.getHttpServer());
 
@@ -57,7 +56,7 @@ export async function createUser(): Promise<number> {
   return res.body.id;
 }
 
-export async function findInstrument(ticker: string): Promise<Instrument> {
+export async function findInstrument(ticker: string): Promise<KnownInstrument> {
   const res = await http().get('/instruments').query({ q: ticker }).expect(200);
   const match = res.body.find((i: { ticker: string }) => i.ticker === ticker);
   return { id: match.id, close: Number(match.close) };

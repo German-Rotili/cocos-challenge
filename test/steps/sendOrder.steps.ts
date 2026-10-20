@@ -1,45 +1,46 @@
 import * as path from 'path';
 import { autoBindSteps, DefineStepFunction, loadFeature } from 'jest-cucumber';
 import { useTestApp } from '../helpers/app';
-import { world } from '../helpers/world';
+import { KnownInstrument, world } from '../helpers/world';
 import * as api from '../helpers/api';
 
-const feature = loadFeature(path.join(__dirname, 'send-order.feature'));
+const feature = loadFeature(path.join(__dirname, '../features/sendOrder.feature'));
 
 // Boots the app and rebuilds an empty schema before each scenario (see helpers/app.ts).
 useTestApp();
 
+function instrument(ticker: string): KnownInstrument {
+  const known = world.instruments.get(ticker);
+  if (!known) throw new Error(`No step looked up instrument "${ticker}"`);
+  return known;
+}
+
+function currentUser(): number {
+  if (world.userId === undefined) throw new Error('No step created a user');
+  return world.userId;
+}
+
 // ---------- Given ----------
 
-type MarketTableRow = Record<
-  'ticker' | 'name' | 'type' | 'close' | 'previousClose',
-  string
->;
+type MarketTableRow = Record<'ticker' | 'name' | 'type' | 'close' | 'previousClose', string>;
 
 const optionalNumber = (cell: string): number | undefined =>
   cell.trim() === '' ? undefined : Number(cell);
 
 const marketHasInstruments = (step: DefineStepFunction) =>
-  step(
-    'the market has the following instruments:',
-    async (table: MarketTableRow[]) => {
-      for (const row of table) {
-        const id = await api.createInstrument({
-          ticker: row.ticker,
-          name: row.name,
-          type: row.type,
+  step('the market has the following instruments:', async (table: MarketTableRow[]) => {
+    for (const row of table) {
+      const id = await api.createInstrument({ ticker: row.ticker, name: row.name, type: row.type });
+      const close = optionalNumber(row.close);
+      if (close !== undefined) {
+        await api.addMarketData(id, {
+          close,
+          previousClose: optionalNumber(row.previousClose) ?? close,
         });
-        const close = optionalNumber(row.close);
-        if (close !== undefined) {
-          await api.addMarketData(id, {
-            close,
-            previousClose: optionalNumber(row.previousClose) ?? close,
-          });
-        }
-        world.instruments.set(row.ticker, { id, close: close ?? NaN });
       }
-    },
-  );
+      world.instruments.set(row.ticker, { id, close: close ?? NaN });
+    }
+  });
 
 const userWithCash = (step: DefineStepFunction) =>
   step(/^a user with (\d+) ARS available$/, async (amount: string) => {
@@ -48,25 +49,16 @@ const userWithCash = (step: DefineStepFunction) =>
   });
 
 const userWithShares = (step: DefineStepFunction) =>
-  step(
-    /^a user with (\d+) shares of "(\w+)"$/,
-    async (qty: string, ticker: string) => {
-      const size = Number(qty);
-      const { id, close } = instrument(ticker);
-      world.userId = await api.createUser();
-      await api.cashIn(world.userId, size * close);
-      await api.placeOrder(
-        {
-          userId: world.userId,
-          instrumentId: id,
-          side: 'BUY',
-          type: 'MARKET',
-          size,
-        },
-        'FILLED',
-      );
-    },
-  );
+  step(/^a user with (\d+) shares of "(\w+)"$/, async (qty: string, ticker: string) => {
+    const size = Number(qty);
+    const { id, close } = instrument(ticker);
+    world.userId = await api.createUser();
+    await api.cashIn(world.userId, size * close);
+    await api.placeOrder(
+      { userId: world.userId, instrumentId: id, side: 'BUY', type: 'MARKET', size },
+      'FILLED',
+    );
+  });
 
 const userHasNewLimitOrder = (step: DefineStepFunction) =>
   step(
@@ -108,22 +100,13 @@ const userHasFilledMarketOrder = (step: DefineStepFunction) =>
 const userSendsOrder = (step: DefineStepFunction) =>
   step(
     /^the user sends a (MARKET|LIMIT) (BUY|SELL) for (\d+) (shares|ARS) of "(\w+)"(?: at price (\d+)| without a price)?$/,
-    async (
-      type,
-      side,
-      qty: string,
-      unit: string,
-      ticker: string,
-      price?: string,
-    ) => {
+    async (type, side, qty: string, unit: string, ticker: string, price?: string) => {
       world.response = await api.sendOrder({
         userId: currentUser(),
         instrumentId: instrument(ticker).id,
         type,
         side,
-        ...(unit === 'shares'
-          ? { size: Number(qty) }
-          : { amount: Number(qty) }),
+        ...(unit === 'shares' ? { size: Number(qty) } : { amount: Number(qty) }),
         ...(price ? { price: Number(price) } : {}),
       });
       world.orderId = world.response.body?.id;
