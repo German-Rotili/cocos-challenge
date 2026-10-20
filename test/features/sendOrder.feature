@@ -1,6 +1,5 @@
 Feature: Send order
 
-  # Every scenario starts from an empty database and this market.
   Background:
     Given the market has the following instruments:
       | ticker | name                     | type     | close | previousClose |
@@ -59,3 +58,15 @@ Feature: Send order
   Scenario: A FILLED order cannot be cancelled
     Given a user with 100000 ARS available
     And the user has a FILLED MARKET BUY for 10 shares of "PAMP"
+
+  Scenario: Sending both size and budget is a bad request
+    Given a user with 100000 ARS available
+    When the user sends a MARKET BUY of "PAMP" with both a size of 10 and an amount of 9000
+    Then the request fails with status 400
+    And no order is persisted
+    
+  Scenario: A cash deposit sent as a budget is a bad request
+    Given a user with 100000 ARS available
+    When the user deposits 5000 ARS sent as a budget
+    Then the request fails with status 400
+    And the user's available cash is 100000

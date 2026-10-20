@@ -11,3 +11,7 @@ export class OrderNotCancellableError extends DomainError {
 export class OrderNotFoundError extends DomainError {
   readonly category = 'NOT_FOUND';
 }
+
+export class UserNotFoundError extends DomainError {
+  readonly category = 'NOT_FOUND';
+}

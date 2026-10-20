@@ -9,7 +9,7 @@ export async function createTestApp(): Promise<INestApplication> {
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
   }).compile();
-  const app = moduleRef.createNestApplication();
+  const app = moduleRef.createNestApplication({ logger: ['error', 'warn'] });
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   await app.init();

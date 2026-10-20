@@ -1,12 +1,11 @@
 import * as path from 'path';
 import { autoBindSteps, DefineStepFunction, loadFeature } from 'jest-cucumber';
 import { useTestApp } from '../helpers/app';
-import { KnownInstrument, world } from '../helpers/world';
+import { world, KnownInstrument } from '../helpers/world';
 import * as api from '../helpers/api';
 
 const feature = loadFeature(path.join(__dirname, '../features/sendOrder.feature'));
 
-// Boots the app and rebuilds an empty schema before each scenario (see helpers/app.ts).
 useTestApp();
 
 function instrument(ticker: string): KnownInstrument {
@@ -54,7 +53,7 @@ const userWithShares = (step: DefineStepFunction) =>
     const { id, close } = instrument(ticker);
     world.userId = await api.createUser();
     await api.cashIn(world.userId, size * close);
-    await api.placeOrder(
+    await api.sendOrderExpecting(
       { userId: world.userId, instrumentId: id, side: 'BUY', type: 'MARKET', size },
       'FILLED',
     );
@@ -64,7 +63,7 @@ const userHasNewLimitOrder = (step: DefineStepFunction) =>
   step(
     /^the user has a NEW LIMIT (BUY|SELL) for (\d+) shares of "(\w+)" at price (\d+)$/,
     async (side, size: string, ticker: string, price: string) => {
-      world.orderId = await api.placeOrder(
+      world.orderId = await api.sendOrderExpecting(
         {
           userId: currentUser(),
           instrumentId: instrument(ticker).id,
@@ -82,7 +81,7 @@ const userHasFilledMarketOrder = (step: DefineStepFunction) =>
   step(
     /^the user has a FILLED MARKET (BUY|SELL) for (\d+) shares of "(\w+)"$/,
     async (side, size: string, ticker: string) => {
-      world.orderId = await api.placeOrder(
+      world.orderId = await api.sendOrderExpecting(
         {
           userId: currentUser(),
           instrumentId: instrument(ticker).id,
@@ -106,7 +105,7 @@ const userSendsOrder = (step: DefineStepFunction) =>
         instrumentId: instrument(ticker).id,
         type,
         side,
-        ...(unit === 'shares' ? { size: Number(qty) } : { amount: Number(qty) }),
+        ...(unit === 'shares' ? { size: Number(qty) } : { budget: Number(qty) }),
         ...(price ? { price: Number(price) } : {}),
       });
       world.orderId = world.response.body?.id;
@@ -116,6 +115,44 @@ const userSendsOrder = (step: DefineStepFunction) =>
 const userCancelsOrder = (step: DefineStepFunction) =>
   step('the user cancels the order', async () => {
     world.response = await api.cancelOrder(world.orderId!);
+  });
+
+const userSendsSizeAndAmount = (step: DefineStepFunction) =>
+  step(
+    /^the user sends a (MARKET|LIMIT) (BUY|SELL) of "(\w+)" with both a size of (\d+) and an amount of (\d+)$/,
+    async (type, side, ticker: string, size: string, budget: string) => {
+      world.response = await api.sendOrder({
+        userId: currentUser(),
+        instrumentId: instrument(ticker).id,
+        type,
+        side,
+        size: Number(size),
+        budget: Number(budget),
+      });
+    },
+  );
+
+const userDepositsAmount = (step: DefineStepFunction) =>
+  step(/^the user deposits (\d+) ARS sent as an amount$/, async (budget: string) => {
+    world.response = await api.sendOrder({
+      userId: currentUser(),
+      instrumentId: instrument('ARS').id,
+      side: 'CASH_IN',
+      type: 'MARKET',
+      budget: Number(budget),
+    });
+    world.orderId = world.response.body?.id;
+  });
+
+const userDepositsBudget = (step: DefineStepFunction) =>
+  step(/^the user deposits (\d+) ARS sent as a budget$/, async (amount: string) => {
+    world.response = await api.sendOrder({
+      userId: currentUser(),
+      instrumentId: instrument('ARS').id,
+      side: 'CASH_IN',
+      type: 'MARKET',
+      budget: Number(amount),
+    });
   });
 
 // ---------- Then ----------
@@ -160,6 +197,9 @@ autoBindSteps(
       userHasFilledMarketOrder(given);
       userSendsOrder(when);
       userCancelsOrder(when);
+      userSendsSizeAndAmount(when);
+      userDepositsAmount(when);
+      userDepositsBudget(when);
       orderIs(then);
       availableCashIs(then);
       requestFailsWith(then);

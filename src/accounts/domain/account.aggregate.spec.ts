@@ -1,5 +1,5 @@
 import { InstrumentQuote } from '../../instruments/domain/instrumentQuote.valueObject';
-import { Account } from './account.aggregator';
+import { Account } from './account.aggregate';
 import { InvalidOrderError, OrderNotCancellableError, OrderNotFoundError } from './errors';
 import { Order, OrderProps } from './order.domainEntity';
 import { TradeInput } from './orderTicket.valueObject';
@@ -84,8 +84,8 @@ describe('Account#placeTrade', () => {
     expect(account.availableCash).toBe(8_999);
   });
 
-  it('rejects a buy of zero shares (amount too small for one share)', () => {
-    const input: TradeInput = { side: 'BUY', type: 'MARKET', amount: 500 };
+  it('rejects a buy of zero shares (amount to spend too small for one share)', () => {
+    const input: TradeInput = { side: 'BUY', type: 'MARKET', budget: 500 };
 
     expect(accountWith(deposit(100_000)).placeTrade(input, PAMP, NOW).status).toBe('REJECTED');
   });
@@ -143,14 +143,14 @@ describe('Account#transfer', () => {
   it('always accepts a cash in', () => {
     const account = accountWith();
 
-    expect(account.transfer({ side: 'CASH_IN', amount: 500 }, ARS, NOW).status).toBe('FILLED');
+    expect(account.transfer({ side: 'CASH_IN', size: 500 }, ARS, NOW).status).toBe('FILLED');
     expect(account.availableCash).toBe(500);
   });
 
   it('rejects a cash out larger than the available cash', () => {
     const account = accountWith(deposit(500));
 
-    expect(account.transfer({ side: 'CASH_OUT', amount: 501 }, ARS, NOW).status).toBe('REJECTED');
+    expect(account.transfer({ side: 'CASH_OUT', size: 501 }, ARS, NOW).status).toBe('REJECTED');
     expect(account.availableCash).toBe(500);
   });
 });

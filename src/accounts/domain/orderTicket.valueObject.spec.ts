@@ -28,23 +28,23 @@ describe('OrderTicket.trade', () => {
     expect(ticket.price).toBe(850);
   });
 
-  it('buys the max whole shares for an amount', () => {
-    const ticket = OrderTicket.trade({ side: 'BUY', type: 'MARKET', amount: 10_000 }, quote());
+  it('buys the max whole shares the amount to spend allows', () => {
+    const ticket = OrderTicket.trade({ side: 'BUY', type: 'MARKET', budget: 10_000 }, quote());
 
     expect(ticket.size).toBe(11);
   });
 
-  it('sizes a LIMIT amount at the limit price', () => {
+  it('sizes a LIMIT amount to spend at the limit price', () => {
     const ticket = OrderTicket.trade(
-      { side: 'BUY', type: 'LIMIT', amount: 10_000, price: 1_000 },
+      { side: 'BUY', type: 'LIMIT', budget: 10_000, price: 1_000 },
       quote(),
     );
 
     expect(ticket.size).toBe(10);
   });
 
-  it('resolves an amount too small for one share to size 0, leaving the decision to Account', () => {
-    const ticket = OrderTicket.trade({ side: 'BUY', type: 'MARKET', amount: 500 }, quote());
+  it('resolves an amount to spend too small for one share to size 0, leaving the decision to Account', () => {
+    const ticket = OrderTicket.trade({ side: 'BUY', type: 'MARKET', budget: 500 }, quote());
 
     expect(ticket.size).toBe(0);
   });
@@ -73,28 +73,28 @@ describe('OrderTicket.trade', () => {
     );
   });
 
-  it.each([0, -100])('refuses an amount of %p', (amount) => {
-    expect(() => OrderTicket.trade({ side: 'BUY', type: 'MARKET', amount }, quote())).toThrow(
+  it.each([0, -100])('refuses an budget of %p', (budget) => {
+    expect(() => OrderTicket.trade({ side: 'BUY', type: 'MARKET', budget }, quote())).toThrow(
       InvalidOrderError,
     );
   });
 });
 
 describe('OrderTicket.transfer', () => {
-  it('moves the amount as size, at price 1, on the cash instrument', () => {
-    const ticket = OrderTicket.transfer({ side: 'CASH_IN', amount: 5_000 }, ARS);
+  it('moves size units of the cash instrument, at price 1', () => {
+    const ticket = OrderTicket.transfer({ side: 'CASH_IN', size: 5_000 }, ARS);
 
     expect(ticket).toMatchObject({ instrumentId: 66, type: 'MARKET', size: 5_000, price: 1 });
   });
 
   it('refuses a non-cash instrument', () => {
-    expect(() => OrderTicket.transfer({ side: 'CASH_IN', amount: 1 }, quote())).toThrow(
+    expect(() => OrderTicket.transfer({ side: 'CASH_IN', size: 1 }, quote())).toThrow(
       InvalidOrderError,
     );
   });
 
-  it.each([0, -1])('refuses an amount of %p', (amount) => {
-    expect(() => OrderTicket.transfer({ side: 'CASH_IN', amount }, ARS)).toThrow(
+  it.each([0, -1])('refuses a size of %p', (size) => {
+    expect(() => OrderTicket.transfer({ side: 'CASH_IN', size }, ARS)).toThrow(
       InvalidOrderError,
     );
   });

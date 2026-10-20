@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch or PR cancels the run still in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Build, lint and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc # Node >= 24.9: Jest needs it to load Nest 12's ES modules
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build (type-checks the whole app)
+        run: npm run build
+
+      - name: Lint (without --fix, so CI never rewrites code)
+        run: npx eslint "{src,test}/**/*.ts"
+
+      - name: Unit tests with coverage
+        run: npm run test:cov
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore
+
+  feature:
+    name: Feature tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Feature tests
+        run: npm run test:feature
+
+      - name: Stop the test database
+        if: always()
+        run: docker compose down -v

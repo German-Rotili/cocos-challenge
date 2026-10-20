@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Instrument } from './instrument.entity';
-import { decimalTransformer } from './transformers';
+import { decimalTransformer } from '../../shared/persistence/transformers';
 @Entity('marketdata')
 @Index(['instrumentId', 'datetime'])
 export class MarketData {

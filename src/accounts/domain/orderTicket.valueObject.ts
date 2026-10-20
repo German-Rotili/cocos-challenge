@@ -2,14 +2,29 @@ import type { InstrumentQuote } from '../../instruments/domain/instrumentQuote.v
 import { InvalidOrderError } from './errors';
 import type { OrderSide, OrderType, TradeSide, TransferSide } from './order.domainEntity';
 
-type Quantity = { size: number; amount?: never } | { amount: number; size?: never };
+/**
+ * A trade states its quantity either as `size` (shares) or as `budget`: a budget
+ * in pesos that the ticket turns into the most whole shares it buys.
+ */
+type Quantity = { size: number; budget?: never } | { budget: number; size?: never };
 type Pricing =
   | { type: Extract<OrderType, 'MARKET'>; price?: never }
   | { type: Extract<OrderType, 'LIMIT'>; price: number };
 
 export type TradeInput = { side: TradeSide } & Quantity & Pricing;
-export type TransferInput = { side: TransferSide; amount: number };
+/** A transfer moves `size` units of the cash instrument: one unit is one peso. */
+export type TransferInput = { side: TransferSide; size: number };
 
+/**
+ * Value object.
+ *
+ * The terms of an order before it is submitted: what the user wants to do,
+ * made precise. The price is fixed, and `size` is always units of the instrument:
+ * whole shares for a trade, pesos for a transfer. `budget` never gets past here.
+ *
+ * It says nothing about whether the account can afford it; that's Account's job,
+ * and Account is the only code that creates tickets.
+ */
 export class OrderTicket {
   private constructor(
     readonly instrumentId: number,
@@ -34,12 +49,13 @@ export class OrderTicket {
     if (!cash.isCash) {
       throw new InvalidOrderError('Transfers must use the cash instrument');
     }
-    if (!(input.amount > 0)) {
-      throw new InvalidOrderError(`Transfer amount must be positive, got ${input.amount}`);
+    if (!(input.size > 0)) {
+      throw new InvalidOrderError(`Transfer size must be positive, got ${input.size}`);
     }
-    return new OrderTicket(cash.id, input.side, 'MARKET', input.amount, 1);
+    return new OrderTicket(cash.id, input.side, 'MARKET', input.size, 1);
   }
 
+  /** Pesos this ticket would commit if accepted. */
   get cost(): number {
     return this.size * this.price;
   }
@@ -65,9 +81,9 @@ export class OrderTicket {
       }
       return input.size;
     }
-    if (!(input.amount > 0)) {
-      throw new InvalidOrderError(`Amount must be positive, got ${input.amount}`);
+    if (!(input.budget > 0)) {
+      throw new InvalidOrderError(`budget must be positive, got ${input.budget}`);
     }
-    return Math.floor(input.amount / price); // no fractional shares; may be 0
+    return Math.floor(input.budget / price); // no fractional shares; may be 0
   }
 }
