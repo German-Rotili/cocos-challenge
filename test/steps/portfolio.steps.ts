@@ -3,11 +3,10 @@ import { autoBindSteps, DefineStepFunction, loadFeature } from 'jest-cucumber';
 import * as api from '../helpers/api';
 import { useTestApp } from '../helpers/app';
 import { world } from '../helpers/world';
-import { commonSteps, currentUser, instrument, StepDefinitions } from './common.steps';
+import { commonSteps, currentUser, instrument, StepDefinitions } from './common';
 
 const feature = loadFeature(path.join(__dirname, '../features/portfolio.feature'));
 
-// Boots the app and rebuilds an empty schema before each scenario (see helpers/app.ts).
 useTestApp();
 
 const UNKNOWN_USER_ID = 999_999;

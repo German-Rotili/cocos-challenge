@@ -3,7 +3,7 @@ import { autoBindSteps, DefineStepFunction, loadFeature } from 'jest-cucumber';
 import * as api from '../helpers/api';
 import { useTestApp } from '../helpers/app';
 import { world } from '../helpers/world';
-import { commonSteps, currentUser, instrument, StepDefinitions } from './common.steps';
+import { commonSteps, currentUser, instrument, StepDefinitions } from './common';
 
 const feature = loadFeature(path.join(__dirname, '../features/sendOrder.feature'));
 

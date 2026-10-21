@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, EntityManager, ILike } from 'typeorm';
+import { DataSource, EntityManager, ILike, In } from 'typeorm';
 import { Instrument as InstrumentEntity } from '../database/entities/instrument.entity';
 import { InstrumentQuoteView } from '../database/views/instrumentQuote.view';
 import { MarketData as MarketDataEntity } from '../database/entities/marketData.entity';
@@ -51,6 +51,15 @@ export class InstrumentsService {
     const row = await manager.findOneBy(InstrumentQuoteView, { id });
     if (!row) throw new InstrumentNotFoundError(`Instrument ${id} not found`);
     return toQuote(row);
+  }
+
+  async findQuotes(
+    ids: number[],
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<Map<number, InstrumentQuote>> {
+    if (ids.length === 0) return new Map();
+    const rows = await manager.findBy(InstrumentQuoteView, { id: In(ids) });
+    return new Map(rows.map((row) => [row.id, toQuote(row)]));
   }
 }
 

@@ -4,17 +4,12 @@ import { Order as OrderEntity } from '../database/entities/order.entity';
 import { User as UserEntity } from '../database/entities/user.entity';
 import type { InstrumentQuote } from '../instruments/domain/instrumentQuote.valueObject';
 import { InstrumentsService } from '../instruments/instruments.service';
-import { Account } from './domain/account.aggregate';
+import { Account, Portfolio } from './domain/account.aggregate';
 import { OrderNotFoundError, UserNotFoundError } from './domain/errors';
 import { Order } from './domain/order.domainEntity';
 import type { TradeInput, TransferInput } from './domain/orderTicket.valueObject';
 import { CreateUserDto } from './dto/createUser.dto';
 import { toDomainOrder, toOrderRow } from './persistence/orderMapper';
-
-export interface AccountSummary {
-  userId: number;
-  availableCash: number;
-}
 
 @Injectable()
 export class AccountsService {
@@ -63,10 +58,12 @@ export class AccountsService {
     return (await this.findUserOrders(this.dataSource.manager, userId)).map(toDomainOrder);
   }
 
-  /** The portfolio feature will add positions and total value here. */
-  async summary(userId: number): Promise<AccountSummary> {
-    const account = await this.loadAccount(this.dataSource.manager, userId, { lock: false });
-    return { userId, availableCash: account.availableCash };
+  portfolio(userId: number): Promise<Portfolio> {
+    return this.dataSource.transaction('REPEATABLE READ', async (manager: EntityManager) => {
+      const account = await this.loadAccount(manager, userId, { lock: false });
+      const ids = account.positions().map((p) => p.instrumentId);
+      return account.portfolio(await this.instruments.findQuotes(ids, manager));
+    });
   }
 
   /**

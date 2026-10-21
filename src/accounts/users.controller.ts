@@ -1,7 +1,8 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
-import { AccountSummary, AccountsService } from './accounts.service';
+import { AccountsService } from './accounts.service';
 import { CreateUserDto } from './dto/createUser.dto';
 import { OrderResponse, toOrderResponse } from './orderResponse';
+import { PortfolioResponse, toPortfolioResponse } from './portfolioResponse';
 
 export interface UserResponse {
   id: number;
@@ -26,7 +27,7 @@ export class UsersController {
   }
 
   @Get(':id/portfolio')
-  portfolio(@Param('id', ParseIntPipe) id: number): Promise<AccountSummary> {
-    return this.accounts.summary(id);
+  async portfolio(@Param('id', ParseIntPipe) id: number): Promise<PortfolioResponse> {
+    return toPortfolioResponse(await this.accounts.portfolio(id));
   }
 }
