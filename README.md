@@ -198,6 +198,10 @@ en este ciclo de vida.
 **Instrumentos**
 - `ticker` y `name` son filtros opcionales, parciales e insensibles a mayúsculas; si se envían ambos, tienen que coincidir los dos. Los filtros vacíos se ignoran, `%` y `_` se buscan literalmente, y los resultados se ordenan por ticker y se paginan.
 
+**Datos**
+- Se respeto la nomenclatura dada en el enunciado (camelCase), que difiere del seed y la base que se compartió (lowercase).
+- Se encontro que los datos del seed generaban un caso de error, asi que se alteró para que quede un caso sin error.
+
 **Alcance**
 - No hay autenticación: el usuario se identifica por el `userId` del request.
 - `POST /users` es un alta mínima: un email y un número de cuenta, sin perfil ni validaciones de unicidad.
