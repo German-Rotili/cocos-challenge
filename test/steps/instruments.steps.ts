@@ -18,15 +18,18 @@ const TEXT_COLUMNS: SearchColumn[] = ['ticker', 'name'];
 
 function searchBody(): Array<Record<SearchColumn, unknown>> {
   expect(world.response?.status).toBe(200);
-  return world.response!.body;
+  return world.response!.body.items;
 }
 
 // ---------- When ----------
 
 const someoneSearchesWithoutFilters = (step: DefineStepFunction) =>
-  step('someone searches instruments without filters', async () => {
-    world.response = await api.searchInstruments({});
-  });
+  step(
+    /^someone searches instruments without filters(?: with limit (\d+) and offset (\d+))?$/,
+    async (limit?: string, offset?: string) => {
+      world.response = await api.searchInstruments({ limit, offset });
+    },
+  );
 
 const someoneSearches = (step: DefineStepFunction) =>
   step(
@@ -72,6 +75,11 @@ const searchReturns = (step: DefineStepFunction) =>
     },
   );
 
+const searchFoundInTotal = (step: DefineStepFunction) =>
+  step(/^the search found (\d+) instruments in total$/, (total: string) => {
+    expect(world.response!.body.total).toBe(Number(total));
+  });
+
 // ---------- Binding ----------
 
 const instrumentsSteps: StepDefinitions = ({ when, then }) => {
@@ -79,6 +87,7 @@ const instrumentsSteps: StepDefinitions = ({ when, then }) => {
   someoneSearches(when);
   searchReturnsNothing(then);
   searchReturns(then);
+  searchFoundInTotal(then);
 };
 
 autoBindSteps([feature], [commonSteps, instrumentsSteps]);

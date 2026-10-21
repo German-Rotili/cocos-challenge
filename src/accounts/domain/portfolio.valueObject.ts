@@ -1,12 +1,13 @@
 import type { InstrumentQuote } from '../../instruments/domain/instrumentQuote.valueObject';
+import { Money } from '../../shared/domain/money.valueObject';
 import type { Holdings } from './account.aggregate';
 import type { PositionValuation } from './position.valueObject';
 
 export class Portfolio {
   private constructor(
     readonly userId: number,
-    readonly totalValue: number,
-    readonly availableCash: number,
+    readonly totalValue: Money,
+    readonly availableCash: Money,
     readonly positions: readonly PositionValuation[],
   ) {
     Object.freeze(this);
@@ -22,14 +23,13 @@ export class Portfolio {
         throw new Error(`No quote for instrument ${position.instrumentId}`);
       return position.valuedAt(quote);
     });
-    const positionsValue = positions.reduce(
-      (sum, p) => sum + (p.marketValue ?? 0),
-      0,
+    const positionsValue = Money.sum(
+      positions.map((p) => p.marketValue ?? Money.ZERO),
     );
 
     return new Portfolio(
       holdings.userId,
-      holdings.settledCash + positionsValue,
+      holdings.settledCash.plus(positionsValue),
       holdings.availableCash,
       positions,
     );

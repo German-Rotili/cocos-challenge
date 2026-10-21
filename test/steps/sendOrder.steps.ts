@@ -20,7 +20,7 @@ useTestApp();
 
 const userSendsOrder = (step: DefineStepFunction) =>
   step(
-    /^the user sends a (MARKET|LIMIT) (BUY|SELL) for (\d+) (shares|ARS) of "(\w+)"(?: at price (\d+)| without a price)?$/,
+    /^the user sends a (MARKET|LIMIT) (BUY|SELL) for (\d+(?:\.\d+)?) (shares|ARS) of "(\w+)"(?: at price (\d+(?:\.\d+)?)| without a price)?$/,
     async (
       type,
       side,
@@ -81,7 +81,7 @@ const userDepositsBudget = (step: DefineStepFunction) =>
 
 const orderIs = (step: DefineStepFunction) =>
   step(
-    /^the order is (?:saved as |still )?(NEW|FILLED|REJECTED|CANCELLED)(?: with (price|size) (\d+))?$/,
+    /^the order is (?:saved as |still )?(NEW|FILLED|REJECTED|CANCELLED)(?: with (price|size) (\d+(?:\.\d+)?))?$/,
     async (status: string, field?: 'price' | 'size', value?: string) => {
       expect(world.orderId).toBeDefined();
       const order = await api.getOrder(world.orderId!); // read back: proves it was persisted

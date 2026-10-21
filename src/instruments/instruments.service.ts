@@ -9,12 +9,11 @@ import {
 import { Instrument as InstrumentEntity } from '../database/entities/instrument.entity';
 import { InstrumentQuoteView } from '../database/views/instrumentQuote.view';
 import { MarketData as MarketDataEntity } from '../database/entities/marketData.entity';
+import type { Page, PageRequest } from '../shared/http/pagination.dto';
 import { InstrumentNotFoundError } from './domain/errors';
 import { InstrumentQuote } from './domain/instrumentQuote.valueObject';
 import { CreateInstrumentDto } from './dto/instrument.dto';
 import { AddMarketDataDto } from './dto/marketData.dto';
-
-const SEARCH_LIMIT = 50;
 
 export interface InstrumentSearch {
   ticker?: string;
@@ -54,17 +53,23 @@ export class InstrumentsService {
     );
   }
 
-  async search(filters: InstrumentSearch = {}): Promise<InstrumentQuote[]> {
+  async search(
+    filters: InstrumentSearch,
+    { limit, offset }: PageRequest,
+  ): Promise<Page<InstrumentQuote>> {
     const where: FindOptionsWhere<InstrumentQuoteView> = {};
     if (filters.ticker) where.ticker = ILike(contains(filters.ticker));
     if (filters.name) where.name = ILike(contains(filters.name));
 
-    const rows = await this.dataSource.getRepository(InstrumentQuoteView).find({
-      where,
-      order: { ticker: 'ASC' },
-      take: SEARCH_LIMIT,
-    });
-    return rows.map(toQuote);
+    const [rows, total] = await this.dataSource
+      .getRepository(InstrumentQuoteView)
+      .findAndCount({
+        where,
+        order: { ticker: 'ASC', id: 'ASC' },
+        take: limit,
+        skip: offset,
+      });
+    return { items: rows.map(toQuote), total, limit, offset };
   }
 
   async findQuote(

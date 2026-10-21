@@ -65,7 +65,7 @@ const someoneChecksUnknownPortfolio = (step: DefineStepFunction) =>
 // ---------- Then ----------
 
 const totalValueIs = (step: DefineStepFunction) =>
-  step(/^the account's total value is (\d+)$/, (value: string) => {
+  step(/^the account's total value is (\d+(?:\.\d+)?)$/, (value: string) => {
     expect(portfolioBody().totalValue).toBe(Number(value));
   });
 

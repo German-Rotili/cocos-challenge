@@ -1,4 +1,5 @@
 import { Body, Controller, Param, ParseIntPipe, Post } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import {
   CreateInstrumentDto,
   InstrumentResponse,
@@ -15,6 +16,7 @@ import { InstrumentsService } from './instruments.service';
  * Writes reference data. Only registered when ENABLE_REFERENCE_DATA_ENDPOINTS=true
  * (see shared/config/referenceDataEndpoints.ts); otherwise these routes don't exist (404).
  */
+@ApiTags('reference data')
 @Controller('instruments')
 export class ReferenceDataController {
   constructor(private readonly instruments: InstrumentsService) {}

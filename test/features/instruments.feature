@@ -19,6 +19,14 @@ Feature: Search instruments
       | PAMP   |
       | SUPV   |
 
+  Scenario: Results come one page at a time
+    When someone searches instruments without filters with limit 2 and offset 2
+    Then the search returns:
+      | ticker |
+      | GGAL   |
+      | PAMP   |
+    And the search found 5 instruments in total
+
   Scenario: A ticker filter matches part of the ticker, ignoring case
     When someone searches instruments by ticker "pa"
     Then the search returns:

@@ -1,12 +1,13 @@
 import type { InstrumentQuote } from '../../instruments/domain/instrumentQuote.valueObject';
+import { Money } from '../../shared/domain/money.valueObject';
 
 export interface PositionValuation {
   instrumentId: number;
   ticker: string;
   name: string;
   quantity: number;
-  averageCost: number;
-  marketValue: number | null;
+  averageCost: number; // pesos per share; may have more than 2 decimals
+  marketValue: Money | null;
   totalReturn: number | null;
   dailyReturn: number | null;
 }
@@ -15,13 +16,13 @@ export class Position {
   private constructor(
     readonly instrumentId: number,
     readonly quantity: number,
-    readonly costBasis: number,
+    readonly costBasis: Money,
   ) {
     Object.freeze(this);
   }
 
   static empty(instrumentId: number): Position {
-    return new Position(instrumentId, 0, 0);
+    return new Position(instrumentId, 0, Money.ZERO);
   }
 
   get isOpen(): boolean {
@@ -29,14 +30,14 @@ export class Position {
   }
 
   get averageCost(): number {
-    return this.isOpen ? this.costBasis / this.quantity : 0;
+    return this.isOpen ? this.costBasis.toNumber() / this.quantity : 0;
   }
 
-  bought(size: number, price: number): Position {
+  bought(size: number, price: Money): Position {
     return new Position(
       this.instrumentId,
       this.quantity + size,
-      this.costBasis + size * price,
+      this.costBasis.plus(price.times(size)),
     );
   }
 
@@ -47,8 +48,11 @@ export class Position {
       );
     }
     const remaining = this.quantity - size;
+    // the sold shares take their share of the cost, to the cent; the rest stays
     const costBasis =
-      remaining === 0 ? 0 : this.costBasis - this.averageCost * size;
+      remaining === 0
+        ? Money.ZERO
+        : this.costBasis.minus(this.costBasis.share(size, this.quantity));
     return new Position(this.instrumentId, remaining, costBasis);
   }
 
@@ -67,9 +71,9 @@ export class Position {
       averageCost: this.averageCost,
       marketValue,
       totalReturn:
-        marketValue == null || this.costBasis <= 0
+        marketValue == null || !this.costBasis.isPositive()
           ? null
-          : (marketValue - this.costBasis) / this.costBasis,
+          : marketValue.minus(this.costBasis).ratioTo(this.costBasis),
       dailyReturn: quote.dailyReturn(),
     };
   }

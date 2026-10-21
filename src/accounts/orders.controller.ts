@@ -8,11 +8,13 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import { ApiCreatedResponse, ApiTags } from '@nestjs/swagger';
 import { AccountsService } from './accounts.service';
 import type { TradeSide } from './domain/order.domainEntity';
 import type { TradeInput } from './domain/orderTicket.valueObject';
 import { OrderResponse, SendOrderDto, toOrderResponse } from './dto/order.dto';
 
+@ApiTags('orders')
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly accounts: AccountsService) {}
@@ -22,6 +24,10 @@ export class OrdersController {
    * 201 for every saved order, including REJECTED ones: a rejection is a result, not an error.
    */
   @Post()
+  @ApiCreatedResponse({
+    type: OrderResponse,
+    description: 'The saved order, REJECTED ones included',
+  })
   async send(@Body() dto: SendOrderDto): Promise<OrderResponse> {
     if (dto.size !== undefined && dto.budget !== undefined) {
       throw new BadRequestException('Send either size or budget, not both');

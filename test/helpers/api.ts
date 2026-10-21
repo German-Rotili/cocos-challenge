@@ -58,7 +58,12 @@ export async function createUser(): Promise<number> {
   return res.body.id;
 }
 
-export interface InstrumentSearch {
+export interface PageQuery {
+  limit?: number | string;
+  offset?: number | string;
+}
+
+export interface InstrumentSearch extends PageQuery {
   ticker?: string;
   name?: string;
 }
@@ -69,7 +74,9 @@ export function searchInstruments(query: InstrumentSearch): Promise<Response> {
 
 export async function findInstrument(ticker: string): Promise<KnownInstrument> {
   const res = await http().get('/instruments').query({ ticker }).expect(200);
-  const match = res.body.find((i: { ticker: string }) => i.ticker === ticker);
+  const match = res.body.items.find(
+    (i: { ticker: string }) => i.ticker === ticker,
+  );
   if (!match)
     throw new Error(`Search for "${ticker}" returned no exact ticker match`);
   return { id: match.id, close: Number(match.close) };
@@ -121,8 +128,12 @@ export async function getOrder(
 export async function userOrders(
   userId: number,
 ): Promise<Array<{ side: string }>> {
-  const res = await http().get(`/users/${userId}/orders`).expect(200);
-  return res.body;
+  const res = await listUserOrders(userId).expect(200);
+  return res.body.items;
+}
+
+export function listUserOrders(userId: number, query: PageQuery = {}) {
+  return http().get(`/users/${userId}/orders`).query(query);
 }
 
 export function portfolio(userId: number): Promise<Response> {

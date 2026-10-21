@@ -2,10 +2,11 @@ Feature: Portfolio
 
   Background:
     Given the market has the following instruments:
-      | ticker | name                     | type     | close | previousClose |
-      | ARS    | PESOS                    | MONEDA   |       |               |
-      | PAMP   | Pampa Holding S.A.       | ACCIONES | 900   | 880           |
-      | GGAL   | Grupo Financiero Galicia | ACCIONES | 1500  | 1450          |
+      | ticker | name                     | type     | close  | previousClose |
+      | ARS    | PESOS                    | MONEDA   |        |               |
+      | PAMP   | Pampa Holding S.A.       | ACCIONES | 900    | 880           |
+      | GGAL   | Grupo Financiero Galicia | ACCIONES | 1500   | 1450          |
+      | TXAR   | Ternium Argentina S.A.   | ACCIONES | 333.33 | 330           |
 
   Scenario: An account with only cash has no positions
     Given a user with 100000 ARS available
@@ -120,3 +121,13 @@ Feature: Portfolio
   Scenario: The portfolio of an unknown user is not found
     When someone checks the portfolio of a user that doesn't exist
     Then the request fails with status 404
+
+  Scenario: Decimal prices keep cash and value exact
+    Given a user with 1000 ARS available
+    And the user has a FILLED MARKET BUY for 3 shares of "TXAR"
+    When the user checks their portfolio
+    Then the user's available cash is 0.01
+    And the account's total value is 1000
+    And the portfolio has the following positions:
+      | ticker | quantity | marketValue | totalReturn |
+      | TXAR   | 3        | 999.99      | 0           |

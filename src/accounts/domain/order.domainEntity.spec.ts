@@ -1,3 +1,4 @@
+import { Money } from '../../shared/domain/money.valueObject';
 import { OrderNotCancellableError } from './errors';
 import { Order, OrderProps, OrderTerms } from './order.domainEntity';
 
@@ -9,7 +10,7 @@ const terms = (overrides: Partial<OrderTerms> = {}): OrderTerms => ({
   side: 'BUY',
   type: 'MARKET',
   size: 10,
-  price: 900,
+  price: Money.of(900),
   datetime: NOW,
   ...overrides,
 });
@@ -21,7 +22,7 @@ const existing = (overrides: Partial<OrderProps> = {}): Order =>
     instrumentId: 2,
     side: 'BUY',
     size: 1,
-    price: 1,
+    price: Money.of(1),
     type: 'MARKET',
     status: 'FILLED',
     datetime: NOW,
@@ -37,9 +38,9 @@ describe('Order.accepted', () => {
   });
 
   it('leaves a LIMIT order as NEW', () => {
-    expect(Order.accepted(terms({ type: 'LIMIT', price: 850 })).status).toBe(
-      'NEW',
-    );
+    expect(
+      Order.accepted(terms({ type: 'LIMIT', price: Money.of(850) })).status,
+    ).toBe('NEW');
   });
 
   it('has no id until persisted', () => {
@@ -49,9 +50,11 @@ describe('Order.accepted', () => {
 
 describe('Order.rejected', () => {
   it('records the terms as REJECTED', () => {
-    expect(Order.rejected(terms({ type: 'LIMIT', price: 850 }))).toMatchObject({
+    expect(
+      Order.rejected(terms({ type: 'LIMIT', price: Money.of(850) })),
+    ).toMatchObject({
       status: 'REJECTED',
-      price: 850,
+      price: Money.of(850),
     });
   });
 });
@@ -88,7 +91,11 @@ describe('Order effects', () => {
   ] as const)(
     '%s %s of size %p at %p has cash effect %p',
     (side, status, size, price, effect) => {
-      expect(existing({ side, status, size, price }).cashEffect()).toBe(effect);
+      expect(
+        existing({ side, status, size, price: Money.of(price) })
+          .cashEffect()
+          .toNumber(),
+      ).toBe(effect);
     },
   );
 

@@ -1,3 +1,5 @@
+import { Money } from '../../shared/domain/money.valueObject';
+
 export interface InstrumentQuoteProps {
   id: number;
   ticker: string;
@@ -39,8 +41,9 @@ export class InstrumentQuote {
     return this.type === 'MONEDA';
   }
 
-  lastPrice(): number | null {
-    return this.isCash ? 1 : this.close;
+  lastPrice(): Money | null {
+    if (this.isCash) return Money.of(1);
+    return this.close == null ? null : Money.of(this.close);
   }
 
   dailyReturn(): number | null {
@@ -48,8 +51,7 @@ export class InstrumentQuote {
     return (this.close - this.previousClose) / this.previousClose;
   }
 
-  marketValue(shares: number): number | null {
-    const price = this.lastPrice();
-    return price == null ? null : shares * price;
+  marketValue(shares: number): Money | null {
+    return this.lastPrice()?.times(shares) ?? null;
   }
 }

@@ -1,7 +1,8 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../../src/app.module';
+import { configureApp } from '../../src/app.setup';
 import { world } from './world';
 import { migrateDatabase, resetDatabase } from './db';
 
@@ -9,9 +10,9 @@ export async function createTestApp(): Promise<INestApplication> {
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
   }).compile();
-  const app = moduleRef.createNestApplication({ logger: ['error', 'warn'] });
-
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  const app = configureApp(
+    moduleRef.createNestApplication({ logger: ['error', 'warn'] }),
+  );
   await app.init();
   return app;
 }

@@ -14,10 +14,10 @@ export class CreateUserDto {
 
 // ---------- Response ----------
 
-export interface UserResponse {
-  id: number;
-  email: string;
-  accountNumber: string;
+export class UserResponse {
+  id!: number;
+  email!: string;
+  accountNumber!: string;
 }
 
 export function toUserResponse(row: UserEntity): UserResponse {

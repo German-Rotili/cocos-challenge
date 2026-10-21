@@ -1,73 +1,204 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# Cocos Challenge — API de trading
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Una API en NestJS + PostgreSQL para buscar instrumentos, enviar y cancelar órdenes, ingresar y retirar dinero, y consultar el portfolio de una cuenta.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Cómo levantarlo
 
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Installation
+Requiere Node 24 (`nvm use` lee `.nvmrc`) y Docker.
 
 ```bash
-$ npm install
+npm install
+npm run db:up            # Postgres: dev en :5432, test en :5433, ambos cargados desde db/init/database.sql
+npm run migration:run    # una vez por cada db:up — los contenedores corren sobre tmpfs, así que los datos no sobreviven a un reinicio
+npm run start:dev        # http://localhost:3000, documentación de la API en http://localhost:3000/docs
 ```
 
-## Running the app
+### Entornos
+
+Los scripts `start*` y `migration:*` definen un `APP_ENV` por defecto (`dev`, o `prod` para `start:prod`); se puede sobrescribir en la misma línea, por ejemplo `APP_ENV=prod npm run migration:run`. Si `APP_ENV` falta o es desconocido, la app no arranca. Los tests siempre usan `test`, y ahí los archivos tienen prioridad sobre el shell, así que un `DATABASE_URL` exportado no puede apuntar la suite a otra base de datos.
+
+### Tests
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm run test:unit        # tests unitarios de dominio y HTTP
+npm run test:feature     # escenarios Gherkin (test/features) contra la app y la base de test
+npm run test:cov         # todo, con cobertura de src/
 ```
 
-## Test
+Pruebas manuales: importar `postman/cocos-challenge.postman_collection.json`.
 
-```bash
-# unit tests
-$ npm run test:unit
+## API
 
-# feature tests
-$ npm run test:feature
+| Método | Ruta | |
+|---|---|---|
+| `GET` | `/instruments?ticker=&name=&limit=&offset=` | Busca instrumentos con su última cotización |
+| `POST` | `/orders` | Envía una orden: `BUY`, `SELL`, `CASH_IN`, `CASH_OUT` |
+| `GET` | `/orders/:id` | Una orden |
+| `PATCH` | `/orders/:id/cancel` | Cancela una orden `NEW` |
+| `POST` | `/users` | Crea un usuario |
+| `GET` | `/users/:id/orders?limit=&offset=` | Las órdenes de un usuario, de la más antigua a la más reciente |
+| `GET` | `/users/:id/portfolio` | Valor total, efectivo disponible y posiciones |
+| `POST` | `/instruments`, `/instruments/:id/marketdata` | Datos de referencia: solo en dev y test (ver más abajo) |
 
-# test coverage
-$ npm run test:cov
+La documentación OpenAPI se sirve en `/docs` (el JSON en `/docs-json`).
+
+Los listados se paginan con `limit` (1–100, por defecto 50) y `offset` (por defecto 0), y responden `{ items, total, limit, offset }`, donde `total` cuenta todos los resultados.
+
+Errores: 
+`400` request mal formado (los bodies y las queries se validan contra los DTOs), 
+`404` usuario, orden o instrumento inexistente, 
+`409` orden no cancelable, 
+`422` una orden bien formada que el dominio rechaza (por ejemplo, operar el instrumento de efectivo).
+
+# Diseño
+
+## Modelo de dominio
+
+Dos bounded contexts. 
+**Accounts** es dueño de todo lo que hace un usuario: enviar órdenes,
+cancelarlas y mantener posiciones. 
+**Instruments** es dueño de lo que se opera y de sus precios.
+Accounts lee los precios de los instrumentos como snapshots `InstrumentQuote` y nunca los modifica.
+
+```mermaid
+classDiagram
+  direction LR
+
+  namespace Accounts {
+    class Account {
+      <<Aggregate root>>
+      +userId: number
+      +availableCash: number
+      +sellableShares(instrumentId) number
+      +placeTrade(input, quote, now) Order
+      +transfer(input, cash, now) Order
+      +cancel(orderId) Order
+    }
+
+    class Order {
+      <<Domain entity>>
+      +id: number?
+      +instrumentId: number
+      +userId: number
+      +side: OrderSide
+      +type: OrderType
+      +size: number
+      +price: number
+      +status: OrderStatus
+      +datetime: Date
+      +accepted(terms)$ Order
+      +rejected(terms)$ Order
+      +restore(props)$ Order
+      +cancel() Order
+      +cashEffect() number
+      +sharesEffect() number
+    }
+
+    class OrderTicket {
+      <<Value object>>
+      +instrumentId: number
+      +side: OrderSide
+      +type: OrderType
+      +size: number
+      +price: number
+      +cost: number
+      +trade(input, quote)$ OrderTicket
+      +transfer(input, cash)$ OrderTicket
+    }
+
+    class Position {
+      <<Value object>>
+      +instrumentId: number
+      +quantity: number
+      +averageCost: number
+      +marketValue(quote) number
+      +totalReturn(quote) number
+    }
+  }
+
+  namespace Instruments {
+    class Instrument {
+      <<Aggregate root>>
+      +id: number
+      +ticker: string
+      +name: string
+      +type: string
+    }
+
+    class MarketData {
+      <<Entity>>
+      +open: number
+      +high: number
+      +low: number
+      +close: number
+      +previousClose: number
+      +datetime: Date
+    }
+
+    class InstrumentQuote {
+      <<Value object>>
+      +id: number
+      +ticker: string
+      +close: number?
+      +previousClose: number?
+      +isCash: boolean
+      +lastPrice() number?
+      +dailyReturn() number?
+      +marketValue(shares) number?
+    }
+  }
+
+  Account "1" *-- "*" Order : tiene
+  Account ..> OrderTicket : crea y decide
+  Account ..> Position : deriva de órdenes ejecutadas
+  OrderTicket ..> InstrumentQuote : se valúa con
+  Position ..> InstrumentQuote : se valúa con
+  Instrument "1" *-- "*" MarketData : historial de precios
+  InstrumentQuote ..> Instrument : snapshot del último precio de
 ```
 
-## Support
+## Ciclo de vida de una orden
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```mermaid
+stateDiagram-v2
+  [*] --> FILLED : orden MARKET, alcanza el saldo
+  [*] --> NEW : orden LIMIT, alcanza el saldo
+  [*] --> REJECTED : no alcanza el efectivo o las acciones
+  NEW --> CANCELLED : Account.cancel()
+  note right of NEW
+    Sin simulación de mercado:
+    una orden NEW nunca se ejecuta
+  end note
+  FILLED --> [*]
+  REJECTED --> [*]
+  CANCELLED --> [*]
+```
 
-## Stay in touch
+Solo las órdenes NEW se pueden cancelar; cancelar cualquier otra responde 409. Los requests
+mal formados se rechazan con 400 o 422 antes de que exista una orden, así que nunca aparecen
+en este ciclo de vida.
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+# Supuestos
 
-## License
+**Órdenes**
+- Las transferencias de efectivo son órdenes sobre el instrumento `ARS` (tipo `MONEDA`): `CASH_IN` / `CASH_OUT`, con `size` en pesos enteros (la columna `size` es un entero) y precio 1. Siempre son `MARKET` y se ejecutan en el momento.
+- Las órdenes `MARKET` se ejecutan inmediatamente al último cierre del instrumento; cualquier `price` enviado se ignora. Un instrumento sin cierre no se puede operar a mercado.
+- Las órdenes `LIMIT` se guardan como `NEW` y quedan así: no hay motor de matching. Mientras están en `NEW`, una compra reserva `size × price` de efectivo y una venta reserva sus acciones.
+- Una orden indica su cantidad como `size` (acciones enteras) o `budget` (pesos), nunca ambos. Un budget compra la mayor cantidad de acciones enteras que cubre (`floor(budget / price)`, calculado en centavos); no hay acciones fraccionarias.
+- Los precios y budgets tienen como máximo 2 decimales, como las columnas `NUMERIC(10,2)`: cualquier valor más fino es un `400`, nunca se redondea en silencio.
+- Una orden que la cuenta no puede afrontar — efectivo insuficiente, acciones insuficientes o un budget menor a una acción — se guarda como `REJECTED` y se responde con `201`: un rechazo es un resultado, no un error.
+- Solo las órdenes `NEW` se pueden cancelar. Cancelar libera lo que tenían reservado.
+- No hay comisiones, impuestos, horario de mercado ni plazo de liquidación: una orden ejecutada afecta el efectivo y las posiciones de inmediato.
 
-Nest is [MIT licensed](LICENSE).
+**Posiciones y rendimientos**
+- El costo usa el costo promedio ponderado: las compras suben la base de costo, las ventas quitan acciones al costo promedio vigente (el promedio no cambia) y vender todo lo reinicia. Una venta parcial toma su parte de la base de costo redondeada al centavo; `averageCost` en sí se informa sin redondear (por ejemplo, `333.333…`).
+- `totalReturn` compara el valor de mercado con la base de costo; `dailyReturn` compara el último cierre con el cierre anterior. Ambos son porcentajes redondeados a 2 decimales (`2.27` = 2,27%); el dominio los guarda como ratios.
+- Las posiciones se listan por ticker.
+
+**Instrumentos**
+- `ticker` y `name` son filtros opcionales, parciales e insensibles a mayúsculas; si se envían ambos, tienen que coincidir los dos. Los filtros vacíos se ignoran, `%` y `_` se buscan literalmente, y los resultados se ordenan por ticker y se paginan.
+
+**Alcance**
+- No hay autenticación: el usuario se identifica por el `userId` del request.
+- `POST /users` es un alta mínima: un email y un número de cuenta, sin perfil ni validaciones de unicidad.
+- `POST /instruments` y `POST /instruments/:id/marketdata` existen para preparar tests y datos locales. Solo se registran cuando `ENABLE_REFERENCE_DATA_ENDPOINTS=true`, y la app se niega a arrancar con eso en `prod`.

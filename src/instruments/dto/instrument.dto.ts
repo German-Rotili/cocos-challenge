@@ -1,5 +1,7 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsString, Length } from 'class-validator';
 import type { Instrument as InstrumentEntity } from '../../database/entities/instrument.entity';
+import { PageOf, PaginationQueryDto } from '../../shared/http/pagination.dto';
 import { toPercent } from '../../shared/http/percent';
 import type { InstrumentQuote } from '../domain/instrumentQuote.valueObject';
 
@@ -20,7 +22,7 @@ export class CreateInstrumentDto {
 }
 
 /** Both filters are optional, partial and case-insensitive; when both are sent, both must match. */
-export class SearchInstrumentsDto {
+export class SearchInstrumentsDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   ticker?: string;
@@ -32,22 +34,30 @@ export class SearchInstrumentsDto {
 
 // ---------- Response ----------
 
-export interface InstrumentResponse {
-  id: number;
-  ticker: string;
-  name: string;
-  type: string;
+export class InstrumentResponse {
+  id!: number;
+  ticker!: string;
+  name!: string;
+  type!: string;
 }
 
-export interface InstrumentQuoteResponse {
-  id: number;
-  ticker: string;
-  name: string;
-  type: string;
-  close: number | null;
-  previousClose: number | null;
-  dailyReturn: number | null; // percent
+export class InstrumentQuoteResponse {
+  id!: number;
+  ticker!: string;
+  name!: string;
+  type!: string;
+
+  @ApiProperty({ type: Number, nullable: true })
+  close!: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  previousClose!: number | null;
+
+  @ApiProperty({ type: Number, nullable: true, description: 'Percent' })
+  dailyReturn!: number | null;
 }
+
+export class InstrumentQuotePage extends PageOf(InstrumentQuoteResponse) {}
 
 export function toInstrumentResponse(
   row: InstrumentEntity,

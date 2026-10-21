@@ -2,10 +2,12 @@ Feature: Send order
 
   Background:
     Given the market has the following instruments:
-      | ticker | name                     | type     | close | previousClose |
-      | ARS    | PESOS                    | MONEDA   |       |               |
-      | PAMP   | Pampa Holding S.A.       | ACCIONES | 900   | 880           |
-      | GGAL   | Grupo Financiero Galicia | ACCIONES | 1500  | 1450          |
+      | ticker | name                     | type     | close  | previousClose |
+      | ARS    | PESOS                    | MONEDA   |        |               |
+      | PAMP   | Pampa Holding S.A.       | ACCIONES | 900    | 880           |
+      | GGAL   | Grupo Financiero Galicia | ACCIONES | 1500   | 1450          |
+      | TXAR   | Ternium Argentina S.A.   | ACCIONES | 333.33 | 330           |
+      | GAMI   | Boldt Gaming S.A.        | ACCIONES | 0.07   | 0.07          |
 
   Scenario: Market buy with exact size is filled at last close
     Given a user with 100000 ARS available
@@ -58,6 +60,10 @@ Feature: Send order
   Scenario: A FILLED order cannot be cancelled
     Given a user with 100000 ARS available
     And the user has a FILLED MARKET BUY for 10 shares of "PAMP"
+    When the user cancels the order
+    Then the request fails with status 409
+    And the order is still FILLED
+    And the user's available cash is 91000
 
   Scenario: Sending both size and budget is a bad request
     Given a user with 100000 ARS available
@@ -70,3 +76,28 @@ Feature: Send order
     When the user deposits 5000 ARS sent as a budget
     Then the request fails with status 400
     And the user's available cash is 100000
+
+  Scenario: Decimal prices leave exact cash
+    Given a user with 1000 ARS available
+    When the user sends a MARKET BUY for 3 shares of "TXAR"
+    Then the order is saved as FILLED with price 333.33
+    And the user's available cash is 0.01
+
+  Scenario: The last cent of the balance can be spent
+    Given a user with 1000 ARS available
+    And the user has a FILLED MARKET BUY for 3 shares of "TXAR"
+    When the user sends a LIMIT BUY for 1 shares of "TXAR" at price 0.01
+    Then the order is saved as NEW
+    And the user's available cash is 0
+
+  Scenario: A budget that exactly covers whole shares buys all of them
+    Given a user with 100 ARS available
+    When the user sends a MARKET BUY for 0.21 ARS of "GAMI"
+    Then the order is saved as FILLED with size 3
+    And the user's available cash is 99.79
+
+  Scenario: A limit price with more than 2 decimals is a bad request
+    Given a user with 100000 ARS available
+    When the user sends a LIMIT BUY for 10 shares of "PAMP" at price 850.555
+    Then the request fails with status 400
+    And no order is persisted

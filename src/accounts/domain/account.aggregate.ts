@@ -1,4 +1,5 @@
 import type { InstrumentQuote } from '../../instruments/domain/instrumentQuote.valueObject';
+import { Money } from '../../shared/domain/money.valueObject';
 import { OrderNotFoundError } from './errors';
 import { Order, OrderTerms } from './order.domainEntity';
 import {
@@ -10,8 +11,8 @@ import { Position } from './position.valueObject';
 
 export interface Holdings {
   userId: number;
-  availableCash: number;
-  settledCash: number;
+  availableCash: Money;
+  settledCash: Money;
   positions: Position[];
 }
 
@@ -35,12 +36,12 @@ export class Account {
     return new Account(userId, orders);
   }
 
-  get availableCash(): number {
-    return this.orders.reduce((cash, o) => cash + o.cashEffect(), 0);
+  get availableCash(): Money {
+    return Money.sum(this.orders.map((o) => o.cashEffect()));
   }
 
-  get settledCash(): number {
-    return this.filled().reduce((cash, o) => cash + o.cashEffect(), 0);
+  get settledCash(): Money {
+    return Money.sum(this.filled().map((o) => o.cashEffect()));
   }
 
   sellableShares(instrumentId: number): number {
@@ -124,9 +125,9 @@ export class Account {
       case 'CASH_IN':
         return true;
       case 'CASH_OUT':
-        return ticket.size <= this.availableCash;
+        return ticket.cost.isAtMost(this.availableCash);
       case 'BUY':
-        return ticket.size >= 1 && ticket.cost <= this.availableCash;
+        return ticket.size >= 1 && ticket.cost.isAtMost(this.availableCash);
       case 'SELL':
         return (
           ticket.size >= 1 &&

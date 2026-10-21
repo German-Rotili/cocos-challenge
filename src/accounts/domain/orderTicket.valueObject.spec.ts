@@ -1,4 +1,8 @@
 import { InstrumentQuote } from '../../instruments/domain/instrumentQuote.valueObject';
+import {
+  InvalidMoneyError,
+  Money,
+} from '../../shared/domain/money.valueObject';
 import { InvalidOrderError } from './errors';
 import { OrderTicket } from './orderTicket.valueObject';
 
@@ -28,9 +32,9 @@ describe('OrderTicket.trade', () => {
       side: 'BUY',
       type: 'MARKET',
       size: 10,
-      price: 900,
+      price: Money.of(900),
     });
-    expect(ticket.cost).toBe(9_000);
+    expect(ticket.cost.toNumber()).toBe(9_000);
   });
 
   it('prices a LIMIT order at its own price, not the last price', () => {
@@ -39,7 +43,7 @@ describe('OrderTicket.trade', () => {
       quote(),
     );
 
-    expect(ticket.price).toBe(850);
+    expect(ticket.price.toNumber()).toBe(850);
   });
 
   it('buys the max whole shares the amount to spend allows', () => {
@@ -99,6 +103,26 @@ describe('OrderTicket.trade', () => {
     ).toThrow(InvalidOrderError);
   });
 
+  it('sizes a budget exactly at decimal prices', () => {
+    // as floats: 0.21 / 0.07 = 2.9999999999999996, which would buy 2
+    const ticket = OrderTicket.trade(
+      { side: 'BUY', type: 'MARKET', budget: 0.21 },
+      quote({ close: 0.07 }),
+    );
+
+    expect(ticket.size).toBe(3);
+    expect(ticket.cost.toNumber()).toBe(0.21);
+  });
+
+  it('refuses a LIMIT price with more than 2 decimals', () => {
+    expect(() =>
+      OrderTicket.trade(
+        { side: 'BUY', type: 'LIMIT', size: 1, price: 850.555 },
+        quote(),
+      ),
+    ).toThrow(InvalidMoneyError);
+  });
+
   it.each([0, -100])('refuses an budget of %p', (budget) => {
     expect(() =>
       OrderTicket.trade({ side: 'BUY', type: 'MARKET', budget }, quote()),
@@ -114,7 +138,7 @@ describe('OrderTicket.transfer', () => {
       instrumentId: 66,
       type: 'MARKET',
       size: 5_000,
-      price: 1,
+      price: Money.of(1),
     });
   });
 
@@ -124,7 +148,7 @@ describe('OrderTicket.transfer', () => {
     ).toThrow(InvalidOrderError);
   });
 
-  it.each([0, -1])('refuses a size of %p', (size) => {
+  it.each([0, -1, 10.5])('refuses a size of %p', (size) => {
     expect(() => OrderTicket.transfer({ side: 'CASH_IN', size }, ARS)).toThrow(
       InvalidOrderError,
     );

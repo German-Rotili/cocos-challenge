@@ -79,7 +79,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "const ars = pm.response.json().find((i) => i.ticker === 'ARS');",
+                  "const ars = pm.response.json().items.find((i) => i.ticker === 'ARS');",
                   "pm.test('ARS exists', () => pm.expect(ars).to.exist);",
                   "pm.collectionVariables.set('arsId', ars.id);"
                 ]
@@ -115,7 +115,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "const pamp = pm.response.json().find((i) => i.ticker === 'PAMP');",
+                  "const pamp = pm.response.json().items.find((i) => i.ticker === 'PAMP');",
                   "pm.test('PAMP has a price', () => pm.expect(pamp.close).to.be.above(0));",
                   "pm.collectionVariables.set('pampId', pamp.id);",
                   "pm.collectionVariables.set('pampClose', pamp.close);"
@@ -194,7 +194,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "const tickers = pm.response.json().map((i) => i.ticker);",
+                  "const tickers = pm.response.json().items.map((i) => i.ticker);",
                   "pm.test('sorted by ticker', () => pm.expect(tickers).to.eql([...tickers].sort((a, b) => a.localeCompare(b))));",
                   "pm.test('at most 50', () => pm.expect(tickers.length).to.be.at.most(50));"
                 ]
@@ -230,7 +230,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('every ticker contains PA', () => pm.response.json().forEach((i) => pm.expect(i.ticker).to.include('PA')));"
+                  "pm.test('every ticker contains PA', () => pm.response.json().items.forEach((i) => pm.expect(i.ticker).to.include('PA')));"
                 ]
               }
             }
@@ -264,7 +264,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('every name contains grupo', () => pm.response.json().forEach((i) => pm.expect(i.name.toLowerCase()).to.include('grupo')));"
+                  "pm.test('every name contains grupo', () => pm.response.json().items.forEach((i) => pm.expect(i.name.toLowerCase()).to.include('grupo')));"
                 ]
               }
             }
@@ -302,7 +302,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('only GGAL', () => pm.expect(pm.response.json().map((i) => i.ticker)).to.eql(['GGAL']));"
+                  "pm.test('only GGAL', () => pm.expect(pm.response.json().items.map((i) => i.ticker)).to.eql(['GGAL']));"
                 ]
               }
             }
@@ -336,7 +336,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('no results', () => pm.expect(pm.response.json()).to.eql([]));"
+                  "pm.test('no results', () => pm.expect(pm.response.json().items).to.eql([]));"
                 ]
               }
             }
@@ -1004,7 +1004,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('has orders', () => pm.expect(pm.response.json().length).to.be.above(0));"
+                  "pm.test('has orders', () => pm.expect(pm.response.json().items.length).to.be.above(0));",
+                  "pm.test('total covers the page', () => pm.expect(pm.response.json().total).to.be.at.least(pm.response.json().items.length));"
                 ]
               }
             }
@@ -1474,7 +1475,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "const found = pm.response.json().find((i) => i.id === Number(pm.collectionVariables.get('newInstrumentId')));",
+                  "const found = pm.response.json().items.find((i) => i.id === Number(pm.collectionVariables.get('newInstrumentId')));",
                   "pm.test('daily return is 10%', () => pm.expect(found.dailyReturn).to.eql(10));"
                 ]
               }

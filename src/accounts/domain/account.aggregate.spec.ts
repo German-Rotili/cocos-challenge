@@ -1,4 +1,5 @@
 import { InstrumentQuote } from '../../instruments/domain/instrumentQuote.valueObject';
+import { Money } from '../../shared/domain/money.valueObject';
 import { Account } from './account.aggregate';
 import {
   InvalidOrderError,
@@ -39,7 +40,7 @@ const order = (overrides: Partial<OrderProps>): Order =>
     instrumentId: PAMP.id,
     side: 'BUY',
     size: 1,
-    price: 1,
+    price: Money.of(1),
     type: 'MARKET',
     status: 'FILLED',
     datetime: NOW,
@@ -47,10 +48,15 @@ const order = (overrides: Partial<OrderProps>): Order =>
   });
 
 const deposit = (amount: number) =>
-  order({ side: 'CASH_IN', instrumentId: ARS.id, size: amount, price: 1 });
+  order({
+    side: 'CASH_IN',
+    instrumentId: ARS.id,
+    size: amount,
+    price: Money.of(1),
+  });
 
 const holding = (size: number, instrument = PAMP) =>
-  order({ side: 'BUY', instrumentId: instrument.id, size, price: 0 }); // price 0: no cash effect
+  order({ side: 'BUY', instrumentId: instrument.id, size, price: Money.ZERO }); // price 0: no cash effect
 
 const accountWith = (...orders: Order[]) => Account.restore(USER, orders);
 
@@ -75,7 +81,7 @@ describe('Account balances', () => {
   it('starts empty', () => {
     const account = accountWith();
 
-    expect(account.availableCash).toBe(0);
+    expect(account.availableCash.toNumber()).toBe(0);
     expect(account.sellableShares(PAMP.id)).toBe(0);
   });
 
@@ -102,10 +108,10 @@ describe('Account#placeTrade', () => {
       instrumentId: PAMP.id,
       status: 'FILLED',
       size: 10,
-      price: 900,
+      price: Money.of(900),
       datetime: NOW,
     });
-    expect(account.availableCash).toBe(91_000);
+    expect(account.availableCash.toNumber()).toBe(91_000);
   });
 
   it('fills a buy that costs exactly the available cash', () => {
@@ -118,7 +124,7 @@ describe('Account#placeTrade', () => {
     const account = accountWith(deposit(8_999));
 
     expect(account.placeTrade(buy(10), PAMP, NOW).status).toBe('REJECTED');
-    expect(account.availableCash).toBe(8_999);
+    expect(account.availableCash.toNumber()).toBe(8_999);
   });
 
   it('rejects a buy of zero shares (amount to spend too small for one share)', () => {
@@ -133,7 +139,7 @@ describe('Account#placeTrade', () => {
     const account = accountWith(deposit(100_000));
 
     expect(account.placeTrade(limitBuy(10, 850), PAMP, NOW).status).toBe('NEW');
-    expect(account.availableCash).toBe(91_500);
+    expect(account.availableCash.toNumber()).toBe(91_500);
   });
 
   it('counts earlier reservations when deciding later orders', () => {
@@ -149,7 +155,7 @@ describe('Account#placeTrade', () => {
     const account = accountWith(holding(10));
 
     expect(account.placeTrade(sell(10), PAMP, NOW).status).toBe('FILLED');
-    expect(account.availableCash).toBe(9_000);
+    expect(account.availableCash.toNumber()).toBe(9_000);
     expect(account.sellableShares(PAMP.id)).toBe(0);
   });
 
@@ -180,7 +186,7 @@ describe('Account#placeTrade', () => {
     expect(() =>
       account.placeTrade({ side: 'BUY', type: 'MARKET', size: 1.5 }, PAMP, NOW),
     ).toThrow(InvalidOrderError);
-    expect(account.availableCash).toBe(100_000);
+    expect(account.availableCash.toNumber()).toBe(100_000);
   });
 });
 
@@ -191,7 +197,7 @@ describe('Account#transfer', () => {
     expect(
       account.transfer({ side: 'CASH_IN', size: 500 }, ARS, NOW).status,
     ).toBe('FILLED');
-    expect(account.availableCash).toBe(500);
+    expect(account.availableCash.toNumber()).toBe(500);
   });
 
   it('rejects a cash out larger than the available cash', () => {
@@ -200,7 +206,7 @@ describe('Account#transfer', () => {
     expect(
       account.transfer({ side: 'CASH_OUT', size: 501 }, ARS, NOW).status,
     ).toBe('REJECTED');
-    expect(account.availableCash).toBe(500);
+    expect(account.availableCash.toNumber()).toBe(500);
   });
 });
 
@@ -211,7 +217,7 @@ describe('Account#cancel', () => {
       type: 'LIMIT',
       status: 'NEW',
       size: 10,
-      price: 900,
+      price: Money.of(900),
     });
     const account = accountWith(deposit(10_000), limit);
 
@@ -219,7 +225,7 @@ describe('Account#cancel', () => {
       id: limit.id,
       status: 'CANCELLED',
     });
-    expect(account.availableCash).toBe(10_000);
+    expect(account.availableCash.toNumber()).toBe(10_000);
   });
 
   it('refuses to cancel a FILLED order', () => {
@@ -241,12 +247,12 @@ const filledBuy = (
   size: number,
   price: number,
   extra: Partial<OrderProps> = {},
-) => order({ side: 'BUY', size, price, ...extra });
+) => order({ side: 'BUY', size, price: Money.of(price), ...extra });
 const filledSell = (
   size: number,
   price: number,
   extra: Partial<OrderProps> = {},
-) => order({ side: 'SELL', size, price, ...extra });
+) => order({ side: 'SELL', size, price: Money.of(price), ...extra });
 
 describe('Account#settledCash', () => {
   it('counts FILLED orders but not what NEW buys reserve', () => {
@@ -256,8 +262,8 @@ describe('Account#settledCash', () => {
       filledBuy(10, 800, { type: 'LIMIT', status: 'NEW' }),
     );
 
-    expect(account.settledCash).toBe(91_000);
-    expect(account.availableCash).toBe(83_000);
+    expect(account.settledCash.toNumber()).toBe(91_000);
+    expect(account.availableCash.toNumber()).toBe(83_000);
   });
 });
 
@@ -296,7 +302,7 @@ describe('Account#positions', () => {
     );
 
     expect(account.positions()).toEqual([
-      expect.objectContaining({ quantity: 10, costBasis: 9_000 }),
+      expect.objectContaining({ quantity: 10, costBasis: Money.of(9_000) }),
     ]);
   });
 
@@ -313,7 +319,7 @@ describe('Account#positions', () => {
     );
 
     expect(account.positions()).toEqual([
-      expect.objectContaining({ quantity: 5, costBasis: 4_500 }),
+      expect.objectContaining({ quantity: 5, costBasis: Money.of(4_500) }),
     ]);
   });
 });
@@ -322,8 +328,8 @@ describe('Account#holdings', () => {
   it('is empty for a new account', () => {
     expect(accountWith().holdings()).toEqual({
       userId: USER,
-      availableCash: 0,
-      settledCash: 0,
+      availableCash: Money.ZERO,
+      settledCash: Money.ZERO,
       positions: [],
     });
   });
@@ -337,8 +343,8 @@ describe('Account#holdings', () => {
     );
 
     expect(account.holdings()).toMatchObject({
-      availableCash: 14_000,
-      settledCash: 14_000,
+      availableCash: Money.of(14_000),
+      settledCash: Money.of(14_000),
       positions: [],
     });
   });
@@ -350,8 +356,8 @@ describe('Account#holdings', () => {
     );
 
     expect(account.holdings()).toMatchObject({
-      availableCash: 92_000,
-      settledCash: 100_000,
+      availableCash: Money.of(92_000),
+      settledCash: Money.of(100_000),
       positions: [],
     });
   });
@@ -363,7 +369,7 @@ describe('Account#holdings', () => {
       expect.objectContaining({
         instrumentId: PAMP.id,
         quantity: 10,
-        costBasis: 8_000,
+        costBasis: Money.of(8_000),
       }),
     ]);
   });

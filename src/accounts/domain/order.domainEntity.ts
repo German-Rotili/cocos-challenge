@@ -1,3 +1,4 @@
+import { Money } from '../../shared/domain/money.valueObject';
 import { OrderNotCancellableError } from './errors';
 
 export type TradeSide = 'BUY' | 'SELL';
@@ -12,7 +13,7 @@ export interface OrderProps {
   userId: number;
   side: OrderSide;
   size: number;
-  price: number;
+  price: Money; // per share; transfers carry 1 and move `size` pesos
   type: OrderType;
   status: OrderStatus;
   datetime: Date;
@@ -26,7 +27,7 @@ export class Order {
   readonly userId: number;
   readonly side: OrderSide;
   readonly size: number;
-  readonly price: number;
+  readonly price: Money;
   readonly type: OrderType;
   readonly status: OrderStatus;
   readonly datetime: Date;
@@ -72,22 +73,25 @@ export class Order {
     return this.side === 'BUY' || this.side === 'SELL';
   }
 
-  cashEffect(): number {
+  /** The pesos this order moves: a transfer's size, or a trade's size × price. */
+  get amount(): Money {
+    return this.isTrade ? this.price.times(this.size) : Money.of(this.size);
+  }
+
+  cashEffect(): Money {
     if (this.status === 'FILLED') {
       switch (this.side) {
         case 'CASH_IN':
-          return this.size;
-        case 'CASH_OUT':
-          return -this.size;
-        case 'BUY':
-          return -this.size * this.price;
         case 'SELL':
-          return this.size * this.price;
+          return this.amount;
+        case 'CASH_OUT':
+        case 'BUY':
+          return this.amount.negated();
       }
     }
     if (this.status === 'NEW' && this.side === 'BUY')
-      return -this.size * this.price; // reserved
-    return 0;
+      return this.amount.negated(); // reserved
+    return Money.ZERO;
   }
 
   sharesEffect(): number {

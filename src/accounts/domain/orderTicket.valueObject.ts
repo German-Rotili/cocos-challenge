@@ -1,4 +1,5 @@
 import type { InstrumentQuote } from '../../instruments/domain/instrumentQuote.valueObject';
+import { Money } from '../../shared/domain/money.valueObject';
 import { InvalidOrderError } from './errors';
 import type {
   OrderSide,
@@ -37,7 +38,7 @@ export class OrderTicket {
     readonly side: OrderSide,
     readonly type: OrderType,
     readonly size: number,
-    readonly price: number,
+    readonly price: Money,
   ) {
     Object.freeze(this);
   }
@@ -57,30 +58,36 @@ export class OrderTicket {
     if (!cash.isCash) {
       throw new InvalidOrderError('Transfers must use the cash instrument');
     }
-    if (!(input.size > 0)) {
+    if (!Number.isInteger(input.size) || input.size <= 0) {
       throw new InvalidOrderError(
-        `Transfer size must be positive, got ${input.size}`,
+        `Transfer size must be a positive whole number of pesos, got ${input.size}`,
       );
     }
-    return new OrderTicket(cash.id, input.side, 'MARKET', input.size, 1);
+    return new OrderTicket(
+      cash.id,
+      input.side,
+      'MARKET',
+      input.size,
+      Money.of(1),
+    );
   }
 
   /** Pesos this ticket would commit if accepted. */
-  get cost(): number {
-    return this.size * this.price;
+  get cost(): Money {
+    return this.price.times(this.size);
   }
 
-  private static priceFor(input: TradeInput, quote: InstrumentQuote): number {
+  private static priceFor(input: TradeInput, quote: InstrumentQuote): Money {
     if (input.type === 'LIMIT') {
       if (!(input.price > 0)) {
         throw new InvalidOrderError(
           `LIMIT orders need a positive price, got ${input.price}`,
         );
       }
-      return input.price;
+      return Money.of(input.price);
     }
     const last = quote.lastPrice();
-    if (last == null || !(last > 0)) {
+    if (last == null || !last.isPositive()) {
       throw new InvalidOrderError(
         `Instrument ${quote.ticker} has no market price`,
       );
@@ -88,7 +95,7 @@ export class OrderTicket {
     return last;
   }
 
-  private static sizeFor(input: TradeInput, price: number): number {
+  private static sizeFor(input: TradeInput, price: Money): number {
     if (input.size !== undefined) {
       if (!Number.isInteger(input.size) || input.size <= 0) {
         throw new InvalidOrderError(
@@ -102,6 +109,6 @@ export class OrderTicket {
         `budget must be positive, got ${input.budget}`,
       );
     }
-    return Math.floor(input.budget / price); // no fractional shares; may be 0
+    return Money.of(input.budget).wholeUnitsAt(price); // no fractional shares; may be 0
   }
 }

@@ -1,4 +1,5 @@
 import { InstrumentQuote } from '../../instruments/domain/instrumentQuote.valueObject';
+import { Money } from '../../shared/domain/money.valueObject';
 import type { Holdings } from './account.aggregate';
 import { Portfolio } from './portfolio.valueObject';
 import { Position } from './position.valueObject';
@@ -23,23 +24,30 @@ const QUOTES = new Map([
   [GGAL_ID, quote(GGAL_ID, 'GGAL', 1_500)],
 ]);
 
-const holdings = (overrides: Partial<Holdings> = {}): Holdings => ({
+const holdings = ({
+  availableCash = 0,
+  settledCash = 0,
+  positions = [],
+}: {
+  availableCash?: number;
+  settledCash?: number;
+  positions?: Position[];
+} = {}): Holdings => ({
   userId: USER,
-  availableCash: 0,
-  settledCash: 0,
-  positions: [],
-  ...overrides,
+  availableCash: Money.of(availableCash),
+  settledCash: Money.of(settledCash),
+  positions,
 });
 
 const pamp = (quantity: number, price: number) =>
-  Position.empty(PAMP_ID).bought(quantity, price);
+  Position.empty(PAMP_ID).bought(quantity, Money.of(price));
 
 describe('Portfolio.value', () => {
   it('is all zeros for empty holdings', () => {
     expect(Portfolio.value(holdings(), QUOTES)).toMatchObject({
       userId: USER,
-      totalValue: 0,
-      availableCash: 0,
+      totalValue: Money.ZERO,
+      availableCash: Money.ZERO,
       positions: [],
     });
   });
@@ -54,14 +62,14 @@ describe('Portfolio.value', () => {
       QUOTES,
     );
 
-    expect(portfolio.availableCash).toBe(92_000);
-    expect(portfolio.totalValue).toBe(101_000);
+    expect(portfolio.availableCash.toNumber()).toBe(92_000);
+    expect(portfolio.totalValue.toNumber()).toBe(101_000);
     expect(portfolio.positions).toEqual([
       expect.objectContaining({
         ticker: 'PAMP',
         quantity: 10,
         averageCost: 800,
-        marketValue: 9_000,
+        marketValue: Money.of(9_000),
       }),
     ]);
     expect(portfolio.positions[0].totalReturn).toBeCloseTo(0.125);
@@ -70,15 +78,18 @@ describe('Portfolio.value', () => {
   it('values each position at its own quote', () => {
     const portfolio = Portfolio.value(
       holdings({
-        positions: [pamp(10, 900), Position.empty(GGAL_ID).bought(2, 1_500)],
+        positions: [
+          pamp(10, 900),
+          Position.empty(GGAL_ID).bought(2, Money.of(1_500)),
+        ],
       }),
       QUOTES,
     );
 
-    expect(portfolio.positions.map((p) => p.marketValue)).toEqual([
+    expect(portfolio.positions.map((p) => p.marketValue?.toNumber())).toEqual([
       9_000, 3_000,
     ]);
-    expect(portfolio.totalValue).toBe(12_000);
+    expect(portfolio.totalValue.toNumber()).toBe(12_000);
   });
 
   it('counts reserved cash in the total value, not in the available cash', () => {
@@ -88,8 +99,8 @@ describe('Portfolio.value', () => {
     );
 
     expect(portfolio).toMatchObject({
-      availableCash: 92_000,
-      totalValue: 100_000,
+      availableCash: Money.of(92_000),
+      totalValue: Money.of(100_000),
     });
   });
 
@@ -101,7 +112,7 @@ describe('Portfolio.value', () => {
       unpriced,
     );
 
-    expect(portfolio.totalValue).toBe(1_000);
+    expect(portfolio.totalValue.toNumber()).toBe(1_000);
     expect(portfolio.positions).toEqual([
       expect.objectContaining({ quantity: 10, marketValue: null }),
     ]);

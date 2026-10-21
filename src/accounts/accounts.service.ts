@@ -4,6 +4,7 @@ import { Order as OrderEntity } from '../database/entities/order.entity';
 import { User as UserEntity } from '../database/entities/user.entity';
 import type { InstrumentQuote } from '../instruments/domain/instrumentQuote.valueObject';
 import { InstrumentsService } from '../instruments/instruments.service';
+import type { Page, PageRequest } from '../shared/http/pagination.dto';
 import { Account } from './domain/account.aggregate';
 import { Portfolio } from './domain/portfolio.valueObject';
 import { OrderNotFoundError, UserNotFoundError } from './domain/errors';
@@ -67,11 +68,20 @@ export class AccountsService {
     return toDomainOrder(row);
   }
 
-  async listOrders(userId: number): Promise<Order[]> {
+  async listOrders(
+    userId: number,
+    { limit, offset }: PageRequest,
+  ): Promise<Page<Order>> {
     await this.ensureUser(this.dataSource.manager, userId);
-    return (await this.findUserOrders(this.dataSource.manager, userId)).map(
-      toDomainOrder,
-    );
+    const [rows, total] = await this.dataSource
+      .getRepository(OrderEntity)
+      .findAndCount({
+        where: { userId },
+        order: { datetime: 'ASC', id: 'ASC' },
+        take: limit,
+        skip: offset,
+      });
+    return { items: rows.map(toDomainOrder), total, limit, offset };
   }
 
   portfolio(userId: number): Promise<Portfolio> {

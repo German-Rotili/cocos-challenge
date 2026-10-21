@@ -76,7 +76,7 @@ const userWithShares = (step: DefineStepFunction) =>
 
 const userHasNewLimitOrder = (step: DefineStepFunction) =>
   step(
-    /^the user has a NEW LIMIT (BUY|SELL) for (\d+) shares of "(\w+)" at price (\d+)$/,
+    /^the user has a NEW LIMIT (BUY|SELL) for (\d+) shares of "(\w+)" at price (\d+(?:\.\d+)?)$/,
     async (side, size: string, ticker: string, price: string) => {
       world.orderId = await api.sendOrderExpecting(
         {
@@ -112,9 +112,12 @@ const userHasFilledMarketOrder = (step: DefineStepFunction) =>
 // ---------- Then ----------
 
 const availableCashIs = (step: DefineStepFunction) =>
-  step(/^the user's available cash is (\d+)$/, async (amount: string) => {
-    expect(await api.availableCash(currentUser())).toBe(Number(amount));
-  });
+  step(
+    /^the user's available cash is (\d+(?:\.\d+)?)$/,
+    async (amount: string) => {
+      expect(await api.availableCash(currentUser())).toBe(Number(amount));
+    },
+  );
 
 const requestFailsWith = (step: DefineStepFunction) =>
   step(/^the request fails with status (\d+)$/, (status: string) => {
