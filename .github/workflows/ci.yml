@@ -34,15 +34,7 @@ jobs:
         run: npx eslint "{src,test}/**/*.ts"
 
       - name: Unit tests with coverage
-        run: npm run test:cov
-
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage/
-          if-no-files-found: ignore
+        run: npm run test:unit
 
   feature:
     name: Feature tests
@@ -61,12 +53,16 @@ jobs:
         run: docker compose up -d --wait db-test
 
       - name: Feature tests
-        run: npm run test:feature
+        run: npm run test:cov
 
       - name: Stop the test database
         if: always()
         run: docker compose down -v
-
-      - name: Stop the test database
+      
+      - name: Upload coverage report
         if: always()
-        run: docker compose down -v
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore
