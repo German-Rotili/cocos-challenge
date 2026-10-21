@@ -57,8 +57,15 @@ jobs:
 
       - run: npm ci
 
+      - name: Start the test database
+        run: docker compose up -d --wait db-test
+
       - name: Feature tests
         run: npm run test:feature
+
+      - name: Stop the test database
+        if: always()
+        run: docker compose down -v
 
       - name: Stop the test database
         if: always()
