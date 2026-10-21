@@ -4,7 +4,7 @@ Una API en NestJS + PostgreSQL para buscar instrumentos, enviar y cancelar órde
 
 ## Cómo levantarlo
 
-Requiere Node 24 (`nvm use` lee `.nvmrc`) y Docker.
+Requiere Node 24 y Docker.
 
 ```bash
 npm install
