@@ -1,98 +1,13 @@
 import * as path from 'path';
 import { autoBindSteps, DefineStepFunction, loadFeature } from 'jest-cucumber';
-import { useTestApp } from '../helpers/app';
-import { world, KnownInstrument } from '../helpers/world';
 import * as api from '../helpers/api';
+import { useTestApp } from '../helpers/app';
+import { world } from '../helpers/world';
+import { commonSteps, currentUser, instrument, StepDefinitions } from './common.steps';
 
 const feature = loadFeature(path.join(__dirname, '../features/sendOrder.feature'));
 
 useTestApp();
-
-function instrument(ticker: string): KnownInstrument {
-  const known = world.instruments.get(ticker);
-  if (!known) throw new Error(`No step looked up instrument "${ticker}"`);
-  return known;
-}
-
-function currentUser(): number {
-  if (world.userId === undefined) throw new Error('No step created a user');
-  return world.userId;
-}
-
-// ---------- Given ----------
-
-type MarketTableRow = Record<'ticker' | 'name' | 'type' | 'close' | 'previousClose', string>;
-
-const optionalNumber = (cell: string): number | undefined =>
-  cell.trim() === '' ? undefined : Number(cell);
-
-const marketHasInstruments = (step: DefineStepFunction) =>
-  step('the market has the following instruments:', async (table: MarketTableRow[]) => {
-    for (const row of table) {
-      const id = await api.createInstrument({ ticker: row.ticker, name: row.name, type: row.type });
-      const close = optionalNumber(row.close);
-      if (close !== undefined) {
-        await api.addMarketData(id, {
-          close,
-          previousClose: optionalNumber(row.previousClose) ?? close,
-        });
-      }
-      world.instruments.set(row.ticker, { id, close: close ?? NaN });
-    }
-  });
-
-const userWithCash = (step: DefineStepFunction) =>
-  step(/^a user with (\d+) ARS available$/, async (amount: string) => {
-    world.userId = await api.createUser();
-    await api.cashIn(world.userId, Number(amount));
-  });
-
-const userWithShares = (step: DefineStepFunction) =>
-  step(/^a user with (\d+) shares of "(\w+)"$/, async (qty: string, ticker: string) => {
-    const size = Number(qty);
-    const { id, close } = instrument(ticker);
-    world.userId = await api.createUser();
-    await api.cashIn(world.userId, size * close);
-    await api.sendOrderExpecting(
-      { userId: world.userId, instrumentId: id, side: 'BUY', type: 'MARKET', size },
-      'FILLED',
-    );
-  });
-
-const userHasNewLimitOrder = (step: DefineStepFunction) =>
-  step(
-    /^the user has a NEW LIMIT (BUY|SELL) for (\d+) shares of "(\w+)" at price (\d+)$/,
-    async (side, size: string, ticker: string, price: string) => {
-      world.orderId = await api.sendOrderExpecting(
-        {
-          userId: currentUser(),
-          instrumentId: instrument(ticker).id,
-          side,
-          type: 'LIMIT',
-          size: Number(size),
-          price: Number(price),
-        },
-        'NEW',
-      );
-    },
-  );
-
-const userHasFilledMarketOrder = (step: DefineStepFunction) =>
-  step(
-    /^the user has a FILLED MARKET (BUY|SELL) for (\d+) shares of "(\w+)"$/,
-    async (side, size: string, ticker: string) => {
-      world.orderId = await api.sendOrderExpecting(
-        {
-          userId: currentUser(),
-          instrumentId: instrument(ticker).id,
-          side,
-          type: 'MARKET',
-          size: Number(size),
-        },
-        'FILLED',
-      );
-    },
-  );
 
 // ---------- When ----------
 
@@ -117,7 +32,7 @@ const userCancelsOrder = (step: DefineStepFunction) =>
     world.response = await api.cancelOrder(world.orderId!);
   });
 
-const userSendsSizeAndAmount = (step: DefineStepFunction) =>
+const userSendsSizeAndBudget = (step: DefineStepFunction) =>
   step(
     /^the user sends a (MARKET|LIMIT) (BUY|SELL) of "(\w+)" with both a size of (\d+) and an amount of (\d+)$/,
     async (type, side, ticker: string, size: string, budget: string) => {
@@ -131,18 +46,6 @@ const userSendsSizeAndAmount = (step: DefineStepFunction) =>
       });
     },
   );
-
-const userDepositsAmount = (step: DefineStepFunction) =>
-  step(/^the user deposits (\d+) ARS sent as an amount$/, async (budget: string) => {
-    world.response = await api.sendOrder({
-      userId: currentUser(),
-      instrumentId: instrument('ARS').id,
-      side: 'CASH_IN',
-      type: 'MARKET',
-      budget: Number(budget),
-    });
-    world.orderId = world.response.body?.id;
-  });
 
 const userDepositsBudget = (step: DefineStepFunction) =>
   step(/^the user deposits (\d+) ARS sent as a budget$/, async (amount: string) => {
@@ -168,16 +71,6 @@ const orderIs = (step: DefineStepFunction) =>
     },
   );
 
-const availableCashIs = (step: DefineStepFunction) =>
-  step(/^the user's available cash is (\d+)$/, async (amount: string) => {
-    expect(await api.availableCash(currentUser())).toBe(Number(amount));
-  });
-
-const requestFailsWith = (step: DefineStepFunction) =>
-  step(/^the request fails with status (\d+)$/, (status: string) => {
-    expect(world.response?.status).toBe(Number(status));
-  });
-
 const noOrderPersisted = (step: DefineStepFunction) =>
   step('no order is persisted', async () => {
     const trading = (await api.userOrders(currentUser())).filter((o) =>
@@ -186,24 +79,15 @@ const noOrderPersisted = (step: DefineStepFunction) =>
     expect(trading).toHaveLength(0);
   });
 
-autoBindSteps(
-  [feature],
-  [
-    ({ given, when, then }) => {
-      marketHasInstruments(given);
-      userWithCash(given);
-      userWithShares(given);
-      userHasNewLimitOrder(given);
-      userHasFilledMarketOrder(given);
-      userSendsOrder(when);
-      userCancelsOrder(when);
-      userSendsSizeAndAmount(when);
-      userDepositsAmount(when);
-      userDepositsBudget(when);
-      orderIs(then);
-      availableCashIs(then);
-      requestFailsWith(then);
-      noOrderPersisted(then);
-    },
-  ],
-);
+// ---------- Binding ----------
+
+const sendOrderSteps: StepDefinitions = ({ when, then }) => {
+  userSendsOrder(when);
+  userCancelsOrder(when);
+  userSendsSizeAndBudget(when);
+  userDepositsBudget(when);
+  orderIs(then);
+  noOrderPersisted(then);
+};
+
+autoBindSteps([feature], [commonSteps, sendOrderSteps]);

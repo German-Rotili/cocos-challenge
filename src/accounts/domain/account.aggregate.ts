@@ -2,6 +2,14 @@ import type { InstrumentQuote } from '../../instruments/domain/instrumentQuote.v
 import { OrderNotFoundError } from './errors';
 import { Order, OrderTerms } from './order.domainEntity';
 import { OrderTicket, TradeInput, TransferInput } from './orderTicket.valueObject';
+import { Position, PositionValuation } from './position.valueObject';
+
+export interface Portfolio {
+  userId: number;
+  totalValue: number;
+  availableCash: number;
+  positions: PositionValuation[];
+}
 
 export class Account {
   private readonly orders: Order[];
@@ -25,10 +33,46 @@ export class Account {
     return this.orders.reduce((cash, o) => cash + o.cashEffect(), 0);
   }
 
+  get settledCash(): number {
+    return this.filled().reduce((cash, o) => cash + o.cashEffect(), 0);
+  }
+
   sellableShares(instrumentId: number): number {
     return this.orders
       .filter((o) => o.instrumentId === instrumentId)
       .reduce((shares, o) => shares + o.sharesEffect(), 0);
+  }
+
+  positions(): Position[] {
+    const byInstrument = new Map<number, Position>();
+    const trades = this.filled()
+      .filter((o) => o.isTrade)
+      .sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
+
+    for (const trade of trades) {
+      const position = byInstrument.get(trade.instrumentId) ?? Position.empty(trade.instrumentId);
+      byInstrument.set(
+        trade.instrumentId,
+        trade.side === 'BUY' ? position.bought(trade.size, trade.price) : position.sold(trade.size),
+      );
+    }
+    return [...byInstrument.values()].filter((p) => p.isOpen);
+  }
+
+  portfolio(quotes: ReadonlyMap<number, InstrumentQuote>): Portfolio {
+    const positions = this.positions().map((position) => {
+      const quote = quotes.get(position.instrumentId);
+      if (!quote) throw new Error(`No quote for instrument ${position.instrumentId}`);
+      return position.valuedAt(quote);
+    });
+    const positionsValue = positions.reduce((sum, p) => sum + (p.marketValue ?? 0), 0);
+
+    return {
+      userId: this.userId,
+      totalValue: this.settledCash + positionsValue,
+      availableCash: this.availableCash,
+      positions,
+    };
   }
 
   placeTrade(input: TradeInput, quote: InstrumentQuote, now: Date): Order {
@@ -62,6 +106,10 @@ export class Account {
     const order = this.canAfford(ticket) ? Order.accepted(terms) : Order.rejected(terms);
     this.orders.push(order);
     return order;
+  }
+
+  private filled(): Order[] {
+    return this.orders.filter((o) => o.status === 'FILLED');
   }
 
   private canAfford(ticket: OrderTicket): boolean {

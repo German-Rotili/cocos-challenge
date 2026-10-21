@@ -174,3 +174,151 @@ describe('Account#cancel', () => {
     expect(() => accountWith().cancel(999)).toThrow(OrderNotFoundError);
   });
 });
+
+const QUOTES = new Map([PAMP, GGAL].map((q) => [q.id, q]));
+const minutesLater = (n: number) => new Date(NOW.getTime() + n * 60_000);
+
+const filledBuy = (size: number, price: number, extra: Partial<OrderProps> = {}) =>
+  order({ side: 'BUY', size, price, ...extra });
+const filledSell = (size: number, price: number, extra: Partial<OrderProps> = {}) =>
+  order({ side: 'SELL', size, price, ...extra });
+
+describe('Account#settledCash', () => {
+  it('counts FILLED orders but not what NEW buys reserve', () => {
+    const account = accountWith(
+      deposit(100_000),
+      filledBuy(10, 900),
+      filledBuy(10, 800, { type: 'LIMIT', status: 'NEW' }),
+    );
+
+    expect(account.settledCash).toBe(91_000);
+    expect(account.availableCash).toBe(83_000);
+  });
+});
+
+describe('Account#positions', () => {
+  it('has none for a new account', () => {
+    expect(accountWith().positions()).toEqual([]);
+  });
+
+  it('builds one position per instrument from FILLED trades', () => {
+    const account = accountWith(
+      deposit(100_000),
+      filledBuy(10, 900),
+      filledBuy(4, 1_400, { instrumentId: GGAL.id }),
+    );
+
+    expect(account.positions().map((p) => [p.instrumentId, p.quantity])).toEqual([
+      [PAMP.id, 10],
+      [GGAL.id, 4],
+    ]);
+  });
+
+  it('leaves cash transfers out', () => {
+    expect(accountWith(deposit(1_000)).positions()).toEqual([]);
+  });
+
+  it('ignores NEW, REJECTED and CANCELLED trades', () => {
+    const account = accountWith(
+      deposit(100_000),
+      filledBuy(10, 900),
+      filledBuy(5, 900, { type: 'LIMIT', status: 'NEW' }),
+      filledBuy(50, 900, { status: 'REJECTED' }),
+      filledBuy(7, 900, { type: 'LIMIT', status: 'CANCELLED' }),
+      filledSell(3, 900, { type: 'LIMIT', status: 'NEW' }),
+    );
+
+    expect(account.positions()).toEqual([
+      expect.objectContaining({ quantity: 10, costBasis: 9_000 }),
+    ]);
+  });
+
+  it('drops a position once every share is sold', () => {
+    expect(accountWith(filledBuy(10, 900), filledSell(10, 1_000)).positions()).toEqual([]);
+  });
+
+  it('folds trades by datetime, whatever order they were loaded in', () => {
+    const account = accountWith(
+      filledSell(5, 1_200, { datetime: minutesLater(2) }),
+      filledBuy(10, 900, { datetime: minutesLater(1) }),
+    );
+
+    expect(account.positions()).toEqual([
+      expect.objectContaining({ quantity: 5, costBasis: 4_500 }),
+    ]);
+  });
+});
+
+describe('Account#portfolio', () => {
+  it('is all zeros for a new account', () => {
+    expect(accountWith().portfolio(QUOTES)).toEqual({
+      userId: USER,
+      totalValue: 0,
+      availableCash: 0,
+      positions: [],
+    });
+  });
+
+  it('values cash plus positions at the last close', () => {
+    const account = accountWith(deposit(100_000), filledBuy(10, 800)); // 92,000 cash + 10 × 900
+
+    const portfolio = account.portfolio(QUOTES);
+
+    expect(portfolio.availableCash).toBe(92_000);
+    expect(portfolio.totalValue).toBe(101_000);
+    expect(portfolio.positions).toEqual([
+      expect.objectContaining({ ticker: 'PAMP', quantity: 10, averageCost: 800, marketValue: 9_000 }),
+    ]);
+    expect(portfolio.positions[0].totalReturn).toBeCloseTo(0.125);
+  });
+
+  it('measures the return on the shares left after a partial sell', () => {
+    const account = accountWith(
+      deposit(100_000),
+      filledBuy(10, 800, { datetime: minutesLater(1) }),
+      filledBuy(10, 1_000, { datetime: minutesLater(2) }),
+      filledSell(5, 1_200, { datetime: minutesLater(3) }),
+    );
+
+    const [pamp] = account.portfolio(QUOTES).positions; // 15 at avg 900, close 900
+
+    expect(pamp).toMatchObject({ quantity: 15, averageCost: 900, marketValue: 13_500 });
+    expect(pamp.totalReturn).toBeCloseTo(0);
+  });
+
+  it("counts a sell's proceeds as cash", () => {
+    // 10,000 − 9,000 + 13,000
+    const account = accountWith(deposit(10_000), filledBuy(10, 900), filledSell(10, 1_300));
+
+    expect(account.portfolio(QUOTES)).toMatchObject({ totalValue: 14_000, availableCash: 14_000 });
+  });
+
+  it('reserves cash for an open limit buy without lowering the total value', () => {
+    const account = accountWith(
+      deposit(100_000),
+      filledBuy(10, 800, { type: 'LIMIT', status: 'NEW' }),
+    );
+
+    expect(account.portfolio(QUOTES)).toMatchObject({
+      availableCash: 92_000,
+      totalValue: 100_000,
+      positions: [],
+    });
+  });
+
+  it('leaves an unpriced position out of the total value', () => {
+    const unpriced = new Map([[PAMP.id, quote(PAMP.id, 'PAMP', 'ACCIONES', null)]]);
+    const account = accountWith(deposit(10_000), filledBuy(10, 900));
+
+    const portfolio = account.portfolio(unpriced);
+
+    expect(portfolio.totalValue).toBe(1_000);
+    expect(portfolio.positions).toEqual([
+      expect.objectContaining({ quantity: 10, marketValue: null }),
+    ]);
+  });
+
+  it('fails loudly when a held instrument has no quote', () => {
+    expect(() => accountWith(filledBuy(10, 900)).portfolio(new Map())).toThrow();
+  });
+});

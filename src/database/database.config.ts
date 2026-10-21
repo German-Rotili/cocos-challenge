@@ -1,5 +1,4 @@
 import { DataSourceOptions } from 'typeorm';
-import { Instrument, MarketData, Order, User } from './entities';
 
 export function buildDataSourceOptions(url: string | undefined): DataSourceOptions {
   if (!url) {
