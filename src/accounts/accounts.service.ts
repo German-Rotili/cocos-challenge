@@ -7,7 +7,10 @@ import { InstrumentsService } from '../instruments/instruments.service';
 import { Account, Portfolio } from './domain/account.aggregate';
 import { OrderNotFoundError, UserNotFoundError } from './domain/errors';
 import { Order } from './domain/order.domainEntity';
-import type { TradeInput, TransferInput } from './domain/orderTicket.valueObject';
+import type {
+  TradeInput,
+  TransferInput,
+} from './domain/orderTicket.valueObject';
 import { CreateUserDto } from './dto/createUser.dto';
 import { toDomainOrder, toOrderRow } from './persistence/orderMapper';
 
@@ -24,14 +27,22 @@ export class AccountsService {
   }
 
   /** BUY or SELL. Returns the saved order: FILLED, NEW or REJECTED. */
-  placeTrade(userId: number, instrumentId: number, input: TradeInput): Promise<Order> {
+  placeTrade(
+    userId: number,
+    instrumentId: number,
+    input: TradeInput,
+  ): Promise<Order> {
     return this.submit(userId, instrumentId, (account, quote, now) =>
       account.placeTrade(input, quote, now),
     );
   }
 
   /** CASH_IN or CASH_OUT, on the cash instrument. Returns the saved order: FILLED or REJECTED. */
-  transfer(userId: number, instrumentId: number, input: TransferInput): Promise<Order> {
+  transfer(
+    userId: number,
+    instrumentId: number,
+    input: TransferInput,
+  ): Promise<Order> {
     return this.submit(userId, instrumentId, (account, quote, now) =>
       account.transfer(input, quote, now),
     );
@@ -42,28 +53,41 @@ export class AccountsService {
       const row = await manager.findOneBy(OrderEntity, { id: orderId });
       if (!row) throw new OrderNotFoundError(`Order ${orderId} not found`);
 
-      const account = await this.loadAccount(manager, row.userId, { lock: true });
+      const account = await this.loadAccount(manager, row.userId, {
+        lock: true,
+      });
       return this.save(manager, account.cancel(orderId));
     });
   }
 
   async findOrder(orderId: number): Promise<Order> {
-    const row = await this.dataSource.getRepository(OrderEntity).findOneBy({ id: orderId });
+    const row = await this.dataSource
+      .getRepository(OrderEntity)
+      .findOneBy({ id: orderId });
     if (!row) throw new OrderNotFoundError(`Order ${orderId} not found`);
     return toDomainOrder(row);
   }
 
   async listOrders(userId: number): Promise<Order[]> {
     await this.ensureUser(this.dataSource.manager, userId);
-    return (await this.findUserOrders(this.dataSource.manager, userId)).map(toDomainOrder);
+    return (await this.findUserOrders(this.dataSource.manager, userId)).map(
+      toDomainOrder,
+    );
   }
 
   portfolio(userId: number): Promise<Portfolio> {
-    return this.dataSource.transaction('REPEATABLE READ', async (manager: EntityManager) => {
-      const account = await this.loadAccount(manager, userId, { lock: false });
-      const ids = account.positions().map((p) => p.instrumentId);
-      return account.portfolio(await this.instruments.findQuotes(ids, manager));
-    });
+    return this.dataSource.transaction(
+      'REPEATABLE READ',
+      async (manager: EntityManager) => {
+        const account = await this.loadAccount(manager, userId, {
+          lock: false,
+        });
+        const ids = account.positions().map((p) => p.instrumentId);
+        return account.portfolio(
+          await this.instruments.findQuotes(ids, manager),
+        );
+      },
+    );
   }
 
   /**
@@ -97,7 +121,11 @@ export class AccountsService {
     });
   }
 
-  private async ensureUser(manager: EntityManager, userId: number, lock = false): Promise<void> {
+  private async ensureUser(
+    manager: EntityManager,
+    userId: number,
+    lock = false,
+  ): Promise<void> {
     const user = await manager.findOne(UserEntity, {
       where: { id: userId },
       ...(lock ? { lock: { mode: 'pessimistic_write' as const } } : {}),
@@ -105,8 +133,14 @@ export class AccountsService {
     if (!user) throw new UserNotFoundError(`User ${userId} not found`);
   }
 
-  private findUserOrders(manager: EntityManager, userId: number): Promise<OrderEntity[]> {
-    return manager.find(OrderEntity, { where: { userId }, order: { datetime: 'ASC', id: 'ASC' } });
+  private findUserOrders(
+    manager: EntityManager,
+    userId: number,
+  ): Promise<OrderEntity[]> {
+    return manager.find(OrderEntity, {
+      where: { userId },
+      order: { datetime: 'ASC', id: 'ASC' },
+    });
   }
 
   private async save(manager: EntityManager, order: Order): Promise<Order> {

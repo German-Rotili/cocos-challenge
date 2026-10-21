@@ -1,4 +1,9 @@
-import type { Order, OrderSide, OrderStatus, OrderType } from './domain/order.domainEntity';
+import type {
+  Order,
+  OrderSide,
+  OrderStatus,
+  OrderType,
+} from './domain/order.domainEntity';
 
 export interface OrderResponse {
   id: number;

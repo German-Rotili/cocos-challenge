@@ -17,25 +17,35 @@ export function currentUser(): number {
 
 // ---------- Given ----------
 
-type MarketTableRow = Record<'ticker' | 'name' | 'type' | 'close' | 'previousClose', string>;
+type MarketTableRow = Record<
+  'ticker' | 'name' | 'type' | 'close' | 'previousClose',
+  string
+>;
 
 const optionalNumber = (cell: string): number | undefined =>
   cell.trim() === '' ? undefined : Number(cell);
 
 const marketHasInstruments = (step: DefineStepFunction) =>
-  step('the market has the following instruments:', async (table: MarketTableRow[]) => {
-    for (const row of table) {
-      const id = await api.createInstrument({ ticker: row.ticker, name: row.name, type: row.type });
-      const close = optionalNumber(row.close);
-      if (close !== undefined) {
-        await api.addMarketData(id, {
-          close,
-          previousClose: optionalNumber(row.previousClose) ?? close,
+  step(
+    'the market has the following instruments:',
+    async (table: MarketTableRow[]) => {
+      for (const row of table) {
+        const id = await api.createInstrument({
+          ticker: row.ticker,
+          name: row.name,
+          type: row.type,
         });
+        const close = optionalNumber(row.close);
+        if (close !== undefined) {
+          await api.addMarketData(id, {
+            close,
+            previousClose: optionalNumber(row.previousClose) ?? close,
+          });
+        }
+        world.instruments.set(row.ticker, { id, close: close ?? NaN });
       }
-      world.instruments.set(row.ticker, { id, close: close ?? NaN });
-    }
-  });
+    },
+  );
 
 const userWithCash = (step: DefineStepFunction) =>
   step(/^a user with (\d+) ARS available$/, async (amount: string) => {
@@ -44,16 +54,25 @@ const userWithCash = (step: DefineStepFunction) =>
   });
 
 const userWithShares = (step: DefineStepFunction) =>
-  step(/^a user with (\d+) shares of "(\w+)"$/, async (qty: string, ticker: string) => {
-    const size = Number(qty);
-    const { id, close } = instrument(ticker);
-    world.userId = await api.createUser();
-    await api.cashIn(world.userId, size * close);
-    await api.sendOrderExpecting(
-      { userId: world.userId, instrumentId: id, side: 'BUY', type: 'MARKET', size },
-      'FILLED',
-    );
-  });
+  step(
+    /^a user with (\d+) shares of "(\w+)"$/,
+    async (qty: string, ticker: string) => {
+      const size = Number(qty);
+      const { id, close } = instrument(ticker);
+      world.userId = await api.createUser();
+      await api.cashIn(world.userId, size * close);
+      await api.sendOrderExpecting(
+        {
+          userId: world.userId,
+          instrumentId: id,
+          side: 'BUY',
+          type: 'MARKET',
+          size,
+        },
+        'FILLED',
+      );
+    },
+  );
 
 const userHasNewLimitOrder = (step: DefineStepFunction) =>
   step(

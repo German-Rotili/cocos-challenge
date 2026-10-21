@@ -1,8 +1,19 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { Instrument } from './instrument.entity';
 import { decimalTransformer } from '../../shared/persistence/transformers';
 
-const price = { type: 'numeric', precision: 10, scale: 2, transformer: decimalTransformer } as const;
+const price = {
+  type: 'numeric',
+  precision: 10,
+  scale: 2,
+  transformer: decimalTransformer,
+} as const;
 
 @Entity('marketdata')
 export class MarketData {

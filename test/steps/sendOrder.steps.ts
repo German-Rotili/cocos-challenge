@@ -3,9 +3,16 @@ import { autoBindSteps, DefineStepFunction, loadFeature } from 'jest-cucumber';
 import * as api from '../helpers/api';
 import { useTestApp } from '../helpers/app';
 import { world } from '../helpers/world';
-import { commonSteps, currentUser, instrument, StepDefinitions } from './common';
+import {
+  commonSteps,
+  currentUser,
+  instrument,
+  StepDefinitions,
+} from './common';
 
-const feature = loadFeature(path.join(__dirname, '../features/sendOrder.feature'));
+const feature = loadFeature(
+  path.join(__dirname, '../features/sendOrder.feature'),
+);
 
 useTestApp();
 
@@ -14,13 +21,22 @@ useTestApp();
 const userSendsOrder = (step: DefineStepFunction) =>
   step(
     /^the user sends a (MARKET|LIMIT) (BUY|SELL) for (\d+) (shares|ARS) of "(\w+)"(?: at price (\d+)| without a price)?$/,
-    async (type, side, qty: string, unit: string, ticker: string, price?: string) => {
+    async (
+      type,
+      side,
+      qty: string,
+      unit: string,
+      ticker: string,
+      price?: string,
+    ) => {
       world.response = await api.sendOrder({
         userId: currentUser(),
         instrumentId: instrument(ticker).id,
         type,
         side,
-        ...(unit === 'shares' ? { size: Number(qty) } : { budget: Number(qty) }),
+        ...(unit === 'shares'
+          ? { size: Number(qty) }
+          : { budget: Number(qty) }),
         ...(price ? { price: Number(price) } : {}),
       });
       world.orderId = world.response.body?.id;
@@ -48,15 +64,18 @@ const userSendsSizeAndBudget = (step: DefineStepFunction) =>
   );
 
 const userDepositsBudget = (step: DefineStepFunction) =>
-  step(/^the user deposits (\d+) ARS sent as a budget$/, async (amount: string) => {
-    world.response = await api.sendOrder({
-      userId: currentUser(),
-      instrumentId: instrument('ARS').id,
-      side: 'CASH_IN',
-      type: 'MARKET',
-      budget: Number(amount),
-    });
-  });
+  step(
+    /^the user deposits (\d+) ARS sent as a budget$/,
+    async (amount: string) => {
+      world.response = await api.sendOrder({
+        userId: currentUser(),
+        instrumentId: instrument('ARS').id,
+        side: 'CASH_IN',
+        type: 'MARKET',
+        budget: Number(amount),
+      });
+    },
+  );
 
 // ---------- Then ----------
 

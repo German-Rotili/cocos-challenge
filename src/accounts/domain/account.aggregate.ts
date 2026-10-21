@@ -1,7 +1,11 @@
 import type { InstrumentQuote } from '../../instruments/domain/instrumentQuote.valueObject';
 import { OrderNotFoundError } from './errors';
 import { Order, OrderTerms } from './order.domainEntity';
-import { OrderTicket, TradeInput, TransferInput } from './orderTicket.valueObject';
+import {
+  OrderTicket,
+  TradeInput,
+  TransferInput,
+} from './orderTicket.valueObject';
 import { Position, PositionValuation } from './position.valueObject';
 
 export interface Portfolio {
@@ -24,7 +28,9 @@ export class Account {
   static restore(userId: number, orders: Order[]): Account {
     const foreign = orders.find((o) => o.userId !== userId);
     if (foreign) {
-      throw new Error(`Order ${foreign.id} belongs to user ${foreign.userId}, not ${userId}`);
+      throw new Error(
+        `Order ${foreign.id} belongs to user ${foreign.userId}, not ${userId}`,
+      );
     }
     return new Account(userId, orders);
   }
@@ -50,10 +56,14 @@ export class Account {
       .sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
 
     for (const trade of trades) {
-      const position = byInstrument.get(trade.instrumentId) ?? Position.empty(trade.instrumentId);
+      const position =
+        byInstrument.get(trade.instrumentId) ??
+        Position.empty(trade.instrumentId);
       byInstrument.set(
         trade.instrumentId,
-        trade.side === 'BUY' ? position.bought(trade.size, trade.price) : position.sold(trade.size),
+        trade.side === 'BUY'
+          ? position.bought(trade.size, trade.price)
+          : position.sold(trade.size),
       );
     }
     return [...byInstrument.values()].filter((p) => p.isOpen);
@@ -62,10 +72,14 @@ export class Account {
   portfolio(quotes: ReadonlyMap<number, InstrumentQuote>): Portfolio {
     const positions = this.positions().map((position) => {
       const quote = quotes.get(position.instrumentId);
-      if (!quote) throw new Error(`No quote for instrument ${position.instrumentId}`);
+      if (!quote)
+        throw new Error(`No quote for instrument ${position.instrumentId}`);
       return position.valuedAt(quote);
     });
-    const positionsValue = positions.reduce((sum, p) => sum + (p.marketValue ?? 0), 0);
+    const positionsValue = positions.reduce(
+      (sum, p) => sum + (p.marketValue ?? 0),
+      0,
+    );
 
     return {
       userId: this.userId,
@@ -86,7 +100,9 @@ export class Account {
   cancel(orderId: number): Order {
     const index = this.orders.findIndex((o) => o.id === orderId);
     if (index === -1) {
-      throw new OrderNotFoundError(`Order ${orderId} not found for user ${this.userId}`);
+      throw new OrderNotFoundError(
+        `Order ${orderId} not found for user ${this.userId}`,
+      );
     }
     const cancelled = this.orders[index].cancel();
     this.orders[index] = cancelled;
@@ -103,7 +119,9 @@ export class Account {
       price: ticket.price,
       datetime: now,
     };
-    const order = this.canAfford(ticket) ? Order.accepted(terms) : Order.rejected(terms);
+    const order = this.canAfford(ticket)
+      ? Order.accepted(terms)
+      : Order.rejected(terms);
     this.orders.push(order);
     return order;
   }
@@ -121,7 +139,10 @@ export class Account {
       case 'BUY':
         return ticket.size >= 1 && ticket.cost <= this.availableCash;
       case 'SELL':
-        return ticket.size >= 1 && ticket.size <= this.sellableShares(ticket.instrumentId);
+        return (
+          ticket.size >= 1 &&
+          ticket.size <= this.sellableShares(ticket.instrumentId)
+        );
     }
   }
 }

@@ -3,9 +3,16 @@ import { autoBindSteps, DefineStepFunction, loadFeature } from 'jest-cucumber';
 import * as api from '../helpers/api';
 import { useTestApp } from '../helpers/app';
 import { world } from '../helpers/world';
-import { commonSteps, currentUser, instrument, StepDefinitions } from './common';
+import {
+  commonSteps,
+  currentUser,
+  instrument,
+  StepDefinitions,
+} from './common';
 
-const feature = loadFeature(path.join(__dirname, '../features/portfolio.feature'));
+const feature = loadFeature(
+  path.join(__dirname, '../features/portfolio.feature'),
+);
 
 useTestApp();
 
@@ -27,12 +34,18 @@ function portfolioBody(): { totalValue: number; positions: PositionBody[] } {
 // ---------- Given ----------
 
 const lastCloseMoves = (step: DefineStepFunction) =>
-  step(/^the last close of "(\w+)" moves to (\d+)$/, async (ticker: string, close: string) => {
-    const known = instrument(ticker);
-    const next = Number(close);
-    await api.addMarketData(known.id, { close: next, previousClose: known.close });
-    world.instruments.set(ticker, { ...known, close: next });
-  });
+  step(
+    /^the last close of "(\w+)" moves to (\d+)$/,
+    async (ticker: string, close: string) => {
+      const known = instrument(ticker);
+      const next = Number(close);
+      await api.addMarketData(known.id, {
+        close: next,
+        previousClose: known.close,
+      });
+      world.instruments.set(ticker, { ...known, close: next });
+    },
+  );
 
 // ---------- When ----------
 
@@ -42,9 +55,12 @@ const userChecksPortfolio = (step: DefineStepFunction) =>
   });
 
 const someoneChecksUnknownPortfolio = (step: DefineStepFunction) =>
-  step("someone checks the portfolio of a user that doesn't exist", async () => {
-    world.response = await api.portfolio(UNKNOWN_USER_ID);
-  });
+  step(
+    "someone checks the portfolio of a user that doesn't exist",
+    async () => {
+      world.response = await api.portfolio(UNKNOWN_USER_ID);
+    },
+  );
 
 // ---------- Then ----------
 
@@ -58,16 +74,21 @@ const noPositions = (step: DefineStepFunction) =>
     expect(portfolioBody().positions).toEqual([]);
   });
 
-type PositionRow = Record<'ticker' | 'quantity' | 'marketValue' | 'totalReturn', string>;
+type PositionRow = Record<
+  'ticker' | 'quantity' | 'marketValue' | 'totalReturn',
+  string
+>;
 
 const positionsAre = (step: DefineStepFunction) =>
   step('the portfolio has the following positions:', (table: PositionRow[]) => {
-    const actual = portfolioBody().positions.map(({ ticker, quantity, marketValue, totalReturn }) => ({
-      ticker,
-      quantity,
-      marketValue,
-      totalReturn,
-    }));
+    const actual = portfolioBody().positions.map(
+      ({ ticker, quantity, marketValue, totalReturn }) => ({
+        ticker,
+        quantity,
+        marketValue,
+        totalReturn,
+      }),
+    );
     const expected = table.map((row) => ({
       ticker: row.ticker,
       quantity: Number(row.quantity),
@@ -78,11 +99,16 @@ const positionsAre = (step: DefineStepFunction) =>
   });
 
 const dailyReturnIs = (step: DefineStepFunction) =>
-  step(/^the "(\w+)" position's daily return is (-?\d+(?:\.\d+)?)$/, (ticker: string, value: string) => {
-    const position = portfolioBody().positions.find((p) => p.ticker === ticker);
-    expect(position).toBeDefined();
-    expect(position!.dailyReturn).toBe(Number(value));
-  });
+  step(
+    /^the "(\w+)" position's daily return is (-?\d+(?:\.\d+)?)$/,
+    (ticker: string, value: string) => {
+      const position = portfolioBody().positions.find(
+        (p) => p.ticker === ticker,
+      );
+      expect(position).toBeDefined();
+      expect(position!.dailyReturn).toBe(Number(value));
+    },
+  );
 
 // ---------- Binding ----------
 

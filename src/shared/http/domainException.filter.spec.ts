@@ -5,11 +5,16 @@ import {
   OrderNotFoundError,
 } from '../../accounts/domain/errors';
 import { DomainError } from '../domain/domainError';
-import { DomainErrorBody, DomainExceptionFilter } from './domainException.filter';
-
+import {
+  DomainErrorBody,
+  DomainExceptionFilter,
+} from './domainException.filter';
 
 /** Captures what the filter writes to the response. */
-function respond(error: DomainError): { status?: number; body?: DomainErrorBody } {
+function respond(error: DomainError): {
+  status?: number;
+  body?: DomainErrorBody;
+} {
   const sent: { status?: number; body?: DomainErrorBody } = {};
   const response = {
     status(code: number) {

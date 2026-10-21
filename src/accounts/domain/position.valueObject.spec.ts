@@ -3,9 +3,19 @@ import { Position } from './position.valueObject';
 
 const PAMP_ID = 2;
 
-const quote = (close: number | null, previousClose: number | null = close, id = PAMP_ID) =>
+const quote = (
+  close: number | null,
+  previousClose: number | null = close,
+  id = PAMP_ID,
+) =>
   InstrumentQuote.create({
-    id, ticker: 'PAMP', name: 'Pampa Holding S.A.', type: 'ACCIONES', close, previousClose, asOf: null,
+    id,
+    ticker: 'PAMP',
+    name: 'Pampa Holding S.A.',
+    type: 'ACCIONES',
+    close,
+    previousClose,
+    asOf: null,
   });
 
 const empty = () => Position.empty(PAMP_ID);
@@ -82,11 +92,15 @@ describe('Position#valuedAt', () => {
   });
 
   it('reports a loss as a negative return', () => {
-    expect(empty().bought(10, 1_000).valuedAt(quote(800)).totalReturn).toBeCloseTo(-0.2);
+    expect(
+      empty().bought(10, 1_000).valuedAt(quote(800)).totalReturn,
+    ).toBeCloseTo(-0.2);
   });
 
   it("passes on the instrument's daily return", () => {
-    expect(empty().bought(1, 900).valuedAt(quote(1_000, 800)).dailyReturn).toBeCloseTo(0.25);
+    expect(
+      empty().bought(1, 900).valuedAt(quote(1_000, 800)).dailyReturn,
+    ).toBeCloseTo(0.25);
   });
 
   it('has no market value or return when the instrument has no price', () => {
@@ -102,6 +116,10 @@ describe('Position#valuedAt', () => {
   });
 
   it('refuses a quote for another instrument', () => {
-    expect(() => empty().bought(1, 900).valuedAt(quote(900, 900, 99))).toThrow();
+    expect(() =>
+      empty()
+        .bought(1, 900)
+        .valuedAt(quote(900, 900, 99)),
+    ).toThrow();
   });
 });

@@ -1,12 +1,18 @@
 import type { InstrumentQuote } from '../../instruments/domain/instrumentQuote.valueObject';
 import { InvalidOrderError } from './errors';
-import type { OrderSide, OrderType, TradeSide, TransferSide } from './order.domainEntity';
+import type {
+  OrderSide,
+  OrderType,
+  TradeSide,
+  TransferSide,
+} from './order.domainEntity';
 
 /**
  * A trade states its quantity either as `size` (shares) or as `budget`: a budget
  * in pesos that the ticket turns into the most whole shares it buys.
  */
-type Quantity = { size: number; budget?: never } | { budget: number; size?: never };
+type Quantity =
+  { size: number; budget?: never } | { budget: number; size?: never };
 type Pricing =
   | { type: Extract<OrderType, 'MARKET'>; price?: never }
   | { type: Extract<OrderType, 'LIMIT'>; price: number };
@@ -38,7 +44,9 @@ export class OrderTicket {
 
   static trade(input: TradeInput, quote: InstrumentQuote): OrderTicket {
     if (quote.isCash) {
-      throw new InvalidOrderError('Cash is moved with CASH_IN/CASH_OUT, not traded');
+      throw new InvalidOrderError(
+        'Cash is moved with CASH_IN/CASH_OUT, not traded',
+      );
     }
     const price = OrderTicket.priceFor(input, quote);
     const size = OrderTicket.sizeFor(input, price);
@@ -50,7 +58,9 @@ export class OrderTicket {
       throw new InvalidOrderError('Transfers must use the cash instrument');
     }
     if (!(input.size > 0)) {
-      throw new InvalidOrderError(`Transfer size must be positive, got ${input.size}`);
+      throw new InvalidOrderError(
+        `Transfer size must be positive, got ${input.size}`,
+      );
     }
     return new OrderTicket(cash.id, input.side, 'MARKET', input.size, 1);
   }
@@ -63,13 +73,17 @@ export class OrderTicket {
   private static priceFor(input: TradeInput, quote: InstrumentQuote): number {
     if (input.type === 'LIMIT') {
       if (!(input.price > 0)) {
-        throw new InvalidOrderError(`LIMIT orders need a positive price, got ${input.price}`);
+        throw new InvalidOrderError(
+          `LIMIT orders need a positive price, got ${input.price}`,
+        );
       }
       return input.price;
     }
     const last = quote.lastPrice();
     if (last == null || !(last > 0)) {
-      throw new InvalidOrderError(`Instrument ${quote.ticker} has no market price`);
+      throw new InvalidOrderError(
+        `Instrument ${quote.ticker} has no market price`,
+      );
     }
     return last;
   }
@@ -77,12 +91,16 @@ export class OrderTicket {
   private static sizeFor(input: TradeInput, price: number): number {
     if (input.size !== undefined) {
       if (!Number.isInteger(input.size) || input.size <= 0) {
-        throw new InvalidOrderError(`Size must be a positive whole number, got ${input.size}`);
+        throw new InvalidOrderError(
+          `Size must be a positive whole number, got ${input.size}`,
+        );
       }
       return input.size;
     }
     if (!(input.budget > 0)) {
-      throw new InvalidOrderError(`budget must be positive, got ${input.budget}`);
+      throw new InvalidOrderError(
+        `budget must be positive, got ${input.budget}`,
+      );
     }
     return Math.floor(input.budget / price); // no fractional shares; may be 0
   }

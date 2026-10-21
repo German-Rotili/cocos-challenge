@@ -1,6 +1,8 @@
 import { DataSourceOptions } from 'typeorm';
 
-export function buildDataSourceOptions(url: string | undefined): DataSourceOptions {
+export function buildDataSourceOptions(
+  url: string | undefined,
+): DataSourceOptions {
   if (!url) {
     throw new Error('Missing database URL (DATABASE_URL / TEST_DATABASE_URL)');
   }

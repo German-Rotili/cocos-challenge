@@ -11,5 +11,7 @@ export async function migrateDatabase(): Promise<void> {
 }
 
 export async function resetDatabase(dataSource: DataSource): Promise<void> {
-  await dataSource.query('TRUNCATE orders, marketdata, instruments, users RESTART IDENTITY CASCADE');
+  await dataSource.query(
+    'TRUNCATE orders, marketdata, instruments, users RESTART IDENTITY CASCADE',
+  );
 }

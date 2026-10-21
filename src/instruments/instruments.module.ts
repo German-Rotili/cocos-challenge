@@ -7,7 +7,13 @@ import { InstrumentsController } from './instruments.controller';
 import { InstrumentsService } from './instruments.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([InstrumentEntity, MarketDataEntity, InstrumentQuoteView])],
+  imports: [
+    TypeOrmModule.forFeature([
+      InstrumentEntity,
+      MarketDataEntity,
+      InstrumentQuoteView,
+    ]),
+  ],
   controllers: [InstrumentsController],
   providers: [InstrumentsService],
   exports: [InstrumentsService],

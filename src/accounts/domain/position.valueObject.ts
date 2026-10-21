@@ -33,7 +33,11 @@ export class Position {
   }
 
   bought(size: number, price: number): Position {
-    return new Position(this.instrumentId, this.quantity + size, this.costBasis + size * price);
+    return new Position(
+      this.instrumentId,
+      this.quantity + size,
+      this.costBasis + size * price,
+    );
   }
 
   sold(size: number): Position {
@@ -43,13 +47,16 @@ export class Position {
       );
     }
     const remaining = this.quantity - size;
-    const costBasis = remaining === 0 ? 0 : this.costBasis - this.averageCost * size;
+    const costBasis =
+      remaining === 0 ? 0 : this.costBasis - this.averageCost * size;
     return new Position(this.instrumentId, remaining, costBasis);
   }
 
   valuedAt(quote: InstrumentQuote): PositionValuation {
     if (quote.id !== this.instrumentId) {
-      throw new Error(`Quote ${quote.id} does not price instrument ${this.instrumentId}`);
+      throw new Error(
+        `Quote ${quote.id} does not price instrument ${this.instrumentId}`,
+      );
     }
     const marketValue = quote.marketValue(this.quantity);
     return {

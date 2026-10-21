@@ -49,7 +49,10 @@ export class Order {
   }
 
   static accepted(terms: OrderTerms): Order {
-    return new Order({ ...terms, status: terms.type === 'MARKET' ? 'FILLED' : 'NEW' });
+    return new Order({
+      ...terms,
+      status: terms.type === 'MARKET' ? 'FILLED' : 'NEW',
+    });
   }
 
   static rejected(terms: OrderTerms): Order {
@@ -82,13 +85,15 @@ export class Order {
           return this.size * this.price;
       }
     }
-    if (this.status === 'NEW' && this.side === 'BUY') return -this.size * this.price; // reserved
+    if (this.status === 'NEW' && this.side === 'BUY')
+      return -this.size * this.price; // reserved
     return 0;
   }
 
   sharesEffect(): number {
     if (!this.isTrade) return 0;
-    if (this.status === 'FILLED') return this.side === 'BUY' ? this.size : -this.size;
+    if (this.status === 'FILLED')
+      return this.side === 'BUY' ? this.size : -this.size;
     if (this.status === 'NEW' && this.side === 'SELL') return -this.size; // reserved
     return 0;
   }

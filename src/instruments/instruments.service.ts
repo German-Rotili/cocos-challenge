@@ -19,9 +19,15 @@ export class InstrumentsService {
     return repository.save(repository.create(dto));
   }
 
-  async addMarketData(instrumentId: number, dto: AddMarketDataDto): Promise<MarketDataEntity> {
-    const exists = await this.dataSource.getRepository(InstrumentEntity).existsBy({ id: instrumentId });
-    if (!exists) throw new InstrumentNotFoundError(`Instrument ${instrumentId} not found`);
+  async addMarketData(
+    instrumentId: number,
+    dto: AddMarketDataDto,
+  ): Promise<MarketDataEntity> {
+    const exists = await this.dataSource
+      .getRepository(InstrumentEntity)
+      .existsBy({ id: instrumentId });
+    if (!exists)
+      throw new InstrumentNotFoundError(`Instrument ${instrumentId} not found`);
 
     const repository = this.dataSource.getRepository(MarketDataEntity);
     return repository.save(
@@ -40,14 +46,19 @@ export class InstrumentsService {
   async search(query?: string): Promise<InstrumentQuote[]> {
     const pattern = query ? `%${escapeLike(query)}%` : undefined;
     const rows = await this.dataSource.getRepository(InstrumentQuoteView).find({
-      where: pattern ? [{ ticker: ILike(pattern) }, { name: ILike(pattern) }] : {},
+      where: pattern
+        ? [{ ticker: ILike(pattern) }, { name: ILike(pattern) }]
+        : {},
       order: { ticker: 'ASC' },
       take: SEARCH_LIMIT,
     });
     return rows.map(toQuote);
   }
 
-  async findQuote(id: number, manager: EntityManager = this.dataSource.manager): Promise<InstrumentQuote> {
+  async findQuote(
+    id: number,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<InstrumentQuote> {
     const row = await manager.findOneBy(InstrumentQuoteView, { id });
     if (!row) throw new InstrumentNotFoundError(`Instrument ${id} not found`);
     return toQuote(row);

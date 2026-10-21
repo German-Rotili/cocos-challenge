@@ -1,14 +1,31 @@
 import { InstrumentQuote } from '../../instruments/domain/instrumentQuote.valueObject';
 import { Account } from './account.aggregate';
-import { InvalidOrderError, OrderNotCancellableError, OrderNotFoundError } from './errors';
+import {
+  InvalidOrderError,
+  OrderNotCancellableError,
+  OrderNotFoundError,
+} from './errors';
 import { Order, OrderProps } from './order.domainEntity';
 import { TradeInput } from './orderTicket.valueObject';
 
 const NOW = new Date('2026-01-01T12:00:00Z');
 const USER = 1;
 
-const quote = (id: number, ticker: string, type: string, close: number | null) =>
-  InstrumentQuote.create({ id, ticker, name: ticker, type, close, previousClose: null, asOf: null });
+const quote = (
+  id: number,
+  ticker: string,
+  type: string,
+  close: number | null,
+) =>
+  InstrumentQuote.create({
+    id,
+    ticker,
+    name: ticker,
+    type,
+    close,
+    previousClose: null,
+    asOf: null,
+  });
 
 const PAMP = quote(2, 'PAMP', 'ACCIONES', 900);
 const GGAL = quote(3, 'GGAL', 'ACCIONES', 1_500);
@@ -37,9 +54,22 @@ const holding = (size: number, instrument = PAMP) =>
 
 const accountWith = (...orders: Order[]) => Account.restore(USER, orders);
 
-const buy = (size: number): TradeInput => ({ side: 'BUY', type: 'MARKET', size });
-const limitBuy = (size: number, price: number): TradeInput => ({ side: 'BUY', type: 'LIMIT', size, price });
-const sell = (size: number): TradeInput => ({ side: 'SELL', type: 'MARKET', size });
+const buy = (size: number): TradeInput => ({
+  side: 'BUY',
+  type: 'MARKET',
+  size,
+});
+const limitBuy = (size: number, price: number): TradeInput => ({
+  side: 'BUY',
+  type: 'LIMIT',
+  size,
+  price,
+});
+const sell = (size: number): TradeInput => ({
+  side: 'SELL',
+  type: 'MARKET',
+  size,
+});
 
 describe('Account balances', () => {
   it('starts empty', () => {
@@ -68,13 +98,20 @@ describe('Account#placeTrade', () => {
     const placed = account.placeTrade(buy(10), PAMP, NOW);
 
     expect(placed).toMatchObject({
-      userId: USER, instrumentId: PAMP.id, status: 'FILLED', size: 10, price: 900, datetime: NOW,
+      userId: USER,
+      instrumentId: PAMP.id,
+      status: 'FILLED',
+      size: 10,
+      price: 900,
+      datetime: NOW,
     });
     expect(account.availableCash).toBe(91_000);
   });
 
   it('fills a buy that costs exactly the available cash', () => {
-    expect(accountWith(deposit(9_000)).placeTrade(buy(10), PAMP, NOW).status).toBe('FILLED');
+    expect(
+      accountWith(deposit(9_000)).placeTrade(buy(10), PAMP, NOW).status,
+    ).toBe('FILLED');
   });
 
   it('rejects a buy that costs more than the available cash, and debits nothing', () => {
@@ -87,7 +124,9 @@ describe('Account#placeTrade', () => {
   it('rejects a buy of zero shares (amount to spend too small for one share)', () => {
     const input: TradeInput = { side: 'BUY', type: 'MARKET', budget: 500 };
 
-    expect(accountWith(deposit(100_000)).placeTrade(input, PAMP, NOW).status).toBe('REJECTED');
+    expect(
+      accountWith(deposit(100_000)).placeTrade(input, PAMP, NOW).status,
+    ).toBe('REJECTED');
   });
 
   it('keeps a LIMIT buy as NEW and reserves its cost', () => {
@@ -101,7 +140,9 @@ describe('Account#placeTrade', () => {
     const account = accountWith(deposit(10_000));
 
     expect(account.placeTrade(limitBuy(10, 900), PAMP, NOW).status).toBe('NEW');
-    expect(account.placeTrade(limitBuy(2, 900), PAMP, NOW).status).toBe('REJECTED');
+    expect(account.placeTrade(limitBuy(2, 900), PAMP, NOW).status).toBe(
+      'REJECTED',
+    );
   });
 
   it('fills a sell within the held shares, regardless of cash', () => {
@@ -113,11 +154,15 @@ describe('Account#placeTrade', () => {
   });
 
   it('rejects a sell of more shares than are held', () => {
-    expect(accountWith(holding(10)).placeTrade(sell(20), PAMP, NOW).status).toBe('REJECTED');
+    expect(
+      accountWith(holding(10)).placeTrade(sell(20), PAMP, NOW).status,
+    ).toBe('REJECTED');
   });
 
   it('does not let shares of another instrument cover a sell', () => {
-    expect(accountWith(holding(10, GGAL)).placeTrade(sell(1), PAMP, NOW).status).toBe('REJECTED');
+    expect(
+      accountWith(holding(10, GGAL)).placeTrade(sell(1), PAMP, NOW).status,
+    ).toBe('REJECTED');
   });
 
   it('counts shares already offered in NEW sells as not sellable', () => {
@@ -132,9 +177,9 @@ describe('Account#placeTrade', () => {
   it('records nothing when the input is invalid', () => {
     const account = accountWith(deposit(100_000));
 
-    expect(() => account.placeTrade({ side: 'BUY', type: 'MARKET', size: 1.5 }, PAMP, NOW)).toThrow(
-      InvalidOrderError,
-    );
+    expect(() =>
+      account.placeTrade({ side: 'BUY', type: 'MARKET', size: 1.5 }, PAMP, NOW),
+    ).toThrow(InvalidOrderError);
     expect(account.availableCash).toBe(100_000);
   });
 });
@@ -143,31 +188,46 @@ describe('Account#transfer', () => {
   it('always accepts a cash in', () => {
     const account = accountWith();
 
-    expect(account.transfer({ side: 'CASH_IN', size: 500 }, ARS, NOW).status).toBe('FILLED');
+    expect(
+      account.transfer({ side: 'CASH_IN', size: 500 }, ARS, NOW).status,
+    ).toBe('FILLED');
     expect(account.availableCash).toBe(500);
   });
 
   it('rejects a cash out larger than the available cash', () => {
     const account = accountWith(deposit(500));
 
-    expect(account.transfer({ side: 'CASH_OUT', size: 501 }, ARS, NOW).status).toBe('REJECTED');
+    expect(
+      account.transfer({ side: 'CASH_OUT', size: 501 }, ARS, NOW).status,
+    ).toBe('REJECTED');
     expect(account.availableCash).toBe(500);
   });
 });
 
 describe('Account#cancel', () => {
   it('cancels a NEW order and releases its reservation', () => {
-    const limit = order({ side: 'BUY', type: 'LIMIT', status: 'NEW', size: 10, price: 900 });
+    const limit = order({
+      side: 'BUY',
+      type: 'LIMIT',
+      status: 'NEW',
+      size: 10,
+      price: 900,
+    });
     const account = accountWith(deposit(10_000), limit);
 
-    expect(account.cancel(limit.id!)).toMatchObject({ id: limit.id, status: 'CANCELLED' });
+    expect(account.cancel(limit.id!)).toMatchObject({
+      id: limit.id,
+      status: 'CANCELLED',
+    });
     expect(account.availableCash).toBe(10_000);
   });
 
   it('refuses to cancel a FILLED order', () => {
     const filled = order({ status: 'FILLED' });
 
-    expect(() => accountWith(filled).cancel(filled.id!)).toThrow(OrderNotCancellableError);
+    expect(() => accountWith(filled).cancel(filled.id!)).toThrow(
+      OrderNotCancellableError,
+    );
   });
 
   it("refuses an order that isn't in this account", () => {
@@ -178,10 +238,16 @@ describe('Account#cancel', () => {
 const QUOTES = new Map([PAMP, GGAL].map((q) => [q.id, q]));
 const minutesLater = (n: number) => new Date(NOW.getTime() + n * 60_000);
 
-const filledBuy = (size: number, price: number, extra: Partial<OrderProps> = {}) =>
-  order({ side: 'BUY', size, price, ...extra });
-const filledSell = (size: number, price: number, extra: Partial<OrderProps> = {}) =>
-  order({ side: 'SELL', size, price, ...extra });
+const filledBuy = (
+  size: number,
+  price: number,
+  extra: Partial<OrderProps> = {},
+) => order({ side: 'BUY', size, price, ...extra });
+const filledSell = (
+  size: number,
+  price: number,
+  extra: Partial<OrderProps> = {},
+) => order({ side: 'SELL', size, price, ...extra });
 
 describe('Account#settledCash', () => {
   it('counts FILLED orders but not what NEW buys reserve', () => {
@@ -208,7 +274,9 @@ describe('Account#positions', () => {
       filledBuy(4, 1_400, { instrumentId: GGAL.id }),
     );
 
-    expect(account.positions().map((p) => [p.instrumentId, p.quantity])).toEqual([
+    expect(
+      account.positions().map((p) => [p.instrumentId, p.quantity]),
+    ).toEqual([
       [PAMP.id, 10],
       [GGAL.id, 4],
     ]);
@@ -234,7 +302,9 @@ describe('Account#positions', () => {
   });
 
   it('drops a position once every share is sold', () => {
-    expect(accountWith(filledBuy(10, 900), filledSell(10, 1_000)).positions()).toEqual([]);
+    expect(
+      accountWith(filledBuy(10, 900), filledSell(10, 1_000)).positions(),
+    ).toEqual([]);
   });
 
   it('folds trades by datetime, whatever order they were loaded in', () => {
@@ -267,7 +337,12 @@ describe('Account#portfolio', () => {
     expect(portfolio.availableCash).toBe(92_000);
     expect(portfolio.totalValue).toBe(101_000);
     expect(portfolio.positions).toEqual([
-      expect.objectContaining({ ticker: 'PAMP', quantity: 10, averageCost: 800, marketValue: 9_000 }),
+      expect.objectContaining({
+        ticker: 'PAMP',
+        quantity: 10,
+        averageCost: 800,
+        marketValue: 9_000,
+      }),
     ]);
     expect(portfolio.positions[0].totalReturn).toBeCloseTo(0.125);
   });
@@ -282,15 +357,26 @@ describe('Account#portfolio', () => {
 
     const [pamp] = account.portfolio(QUOTES).positions; // 15 at avg 900, close 900
 
-    expect(pamp).toMatchObject({ quantity: 15, averageCost: 900, marketValue: 13_500 });
+    expect(pamp).toMatchObject({
+      quantity: 15,
+      averageCost: 900,
+      marketValue: 13_500,
+    });
     expect(pamp.totalReturn).toBeCloseTo(0);
   });
 
   it("counts a sell's proceeds as cash", () => {
     // 10,000 − 9,000 + 13,000
-    const account = accountWith(deposit(10_000), filledBuy(10, 900), filledSell(10, 1_300));
+    const account = accountWith(
+      deposit(10_000),
+      filledBuy(10, 900),
+      filledSell(10, 1_300),
+    );
 
-    expect(account.portfolio(QUOTES)).toMatchObject({ totalValue: 14_000, availableCash: 14_000 });
+    expect(account.portfolio(QUOTES)).toMatchObject({
+      totalValue: 14_000,
+      availableCash: 14_000,
+    });
   });
 
   it('reserves cash for an open limit buy without lowering the total value', () => {
@@ -307,7 +393,9 @@ describe('Account#portfolio', () => {
   });
 
   it('leaves an unpriced position out of the total value', () => {
-    const unpriced = new Map([[PAMP.id, quote(PAMP.id, 'PAMP', 'ACCIONES', null)]]);
+    const unpriced = new Map([
+      [PAMP.id, quote(PAMP.id, 'PAMP', 'ACCIONES', null)],
+    ]);
     const account = accountWith(deposit(10_000), filledBuy(10, 900));
 
     const portfolio = account.portfolio(unpriced);
@@ -319,6 +407,8 @@ describe('Account#portfolio', () => {
   });
 
   it('fails loudly when a held instrument has no quote', () => {
-    expect(() => accountWith(filledBuy(10, 900)).portfolio(new Map())).toThrow();
+    expect(() =>
+      accountWith(filledBuy(10, 900)).portfolio(new Map()),
+    ).toThrow();
   });
 });

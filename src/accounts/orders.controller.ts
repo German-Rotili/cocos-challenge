@@ -1,4 +1,13 @@
-import { BadRequestException, Body, Controller, Get, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { AccountsService } from './accounts.service';
 import type { TradeSide } from './domain/order.domainEntity';
 import type { TradeInput } from './domain/orderTicket.valueObject';
@@ -22,14 +31,23 @@ export class OrdersController {
 
     if (side === 'CASH_IN' || side === 'CASH_OUT') {
       if (dto.size === undefined) {
-        throw new BadRequestException('Transfers are sent with size: the number of pesos');
+        throw new BadRequestException(
+          'Transfers are sent with size: the number of pesos',
+        );
       }
       return toOrderResponse(
-        await this.accounts.transfer(userId, instrumentId, { side, size: dto.size }),
+        await this.accounts.transfer(userId, instrumentId, {
+          side,
+          size: dto.size,
+        }),
       );
     }
 
-    const order = await this.accounts.placeTrade(userId, instrumentId, toTradeInput(dto, side));
+    const order = await this.accounts.placeTrade(
+      userId,
+      instrumentId,
+      toTradeInput(dto, side),
+    );
 
     return toOrderResponse(order);
   }

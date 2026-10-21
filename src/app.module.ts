@@ -14,7 +14,7 @@ import { referenceDataEndpointsEnabled } from './shared/config/referenceDataEndp
 @Module({
   imports: [
     TypeOrmModule.forRootAsync({
-    useFactory: () => ({
+      useFactory: () => ({
         ...buildDataSourceOptions(process.env.DATABASE_URL),
         autoLoadEntities: true,
       }),
@@ -24,6 +24,9 @@ import { referenceDataEndpointsEnabled } from './shared/config/referenceDataEndp
     ...(referenceDataEndpointsEnabled() ? [ReferenceDataModule] : []),
   ],
   controllers: [AppController],
-  providers: [AppService, { provide: APP_FILTER, useClass: DomainExceptionFilter }],
+  providers: [
+    AppService,
+    { provide: APP_FILTER, useClass: DomainExceptionFilter },
+  ],
 })
 export class AppModule {}

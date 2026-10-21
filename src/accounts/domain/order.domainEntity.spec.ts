@@ -30,11 +30,16 @@ const existing = (overrides: Partial<OrderProps> = {}): Order =>
 
 describe('Order.accepted', () => {
   it('fills a MARKET order immediately, keeping its terms', () => {
-    expect(Order.accepted(terms())).toMatchObject({ ...terms(), status: 'FILLED' });
+    expect(Order.accepted(terms())).toMatchObject({
+      ...terms(),
+      status: 'FILLED',
+    });
   });
 
   it('leaves a LIMIT order as NEW', () => {
-    expect(Order.accepted(terms({ type: 'LIMIT', price: 850 })).status).toBe('NEW');
+    expect(Order.accepted(terms({ type: 'LIMIT', price: 850 })).status).toBe(
+      'NEW',
+    );
   });
 
   it('has no id until persisted', () => {
@@ -59,9 +64,14 @@ describe('Order#cancel', () => {
     expect(order.status).toBe('NEW');
   });
 
-  it.each(['FILLED', 'REJECTED', 'CANCELLED'] as const)('refuses a %s order', (status) => {
-    expect(() => existing({ status }).cancel()).toThrow(OrderNotCancellableError);
-  });
+  it.each(['FILLED', 'REJECTED', 'CANCELLED'] as const)(
+    'refuses a %s order',
+    (status) => {
+      expect(() => existing({ status }).cancel()).toThrow(
+        OrderNotCancellableError,
+      );
+    },
+  );
 });
 
 describe('Order effects', () => {
@@ -75,9 +85,12 @@ describe('Order effects', () => {
     ['SELL', 'NEW', 5, 1_000, 0],
     ['BUY', 'REJECTED', 99, 99, 0],
     ['BUY', 'CANCELLED', 1, 500, 0],
-  ] as const)('%s %s of size %p at %p has cash effect %p', (side, status, size, price, effect) => {
-    expect(existing({ side, status, size, price }).cashEffect()).toBe(effect);
-  });
+  ] as const)(
+    '%s %s of size %p at %p has cash effect %p',
+    (side, status, size, price, effect) => {
+      expect(existing({ side, status, size, price }).cashEffect()).toBe(effect);
+    },
+  );
 
   it.each([
     ['BUY', 'FILLED', 10],
@@ -86,9 +99,12 @@ describe('Order effects', () => {
     ['BUY', 'NEW', 0], // not owned until filled
     ['SELL', 'CANCELLED', 0],
     ['CASH_IN', 'FILLED', 0],
-  ] as const)('%s %s of 10 shares has shares effect %p', (side, status, effect) => {
-    expect(existing({ side, status, size: 10 }).sharesEffect()).toBe(effect);
-  });
+  ] as const)(
+    '%s %s of 10 shares has shares effect %p',
+    (side, status, effect) => {
+      expect(existing({ side, status, size: 10 }).sharesEffect()).toBe(effect);
+    },
+  );
 });
 
 it('is frozen', () => {

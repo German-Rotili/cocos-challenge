@@ -8,7 +8,10 @@ import { OrdersController } from './orders.controller';
 import { UsersController } from './users.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([UserEntity, OrderEntity]), InstrumentsModule],
+  imports: [
+    TypeOrmModule.forFeature([UserEntity, OrderEntity]),
+    InstrumentsModule,
+  ],
   controllers: [OrdersController, UsersController],
   providers: [AccountsService],
 })
