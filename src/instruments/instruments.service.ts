@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, EntityManager, ILike, In } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  FindOptionsWhere,
+  ILike,
+  In,
+} from 'typeorm';
 import { Instrument as InstrumentEntity } from '../database/entities/instrument.entity';
 import { InstrumentQuoteView } from '../database/views/instrumentQuote.view';
 import { MarketData as MarketDataEntity } from '../database/entities/marketData.entity';
@@ -9,6 +15,11 @@ import { AddMarketDataDto } from './dto/addMarketData.dto';
 import { CreateInstrumentDto } from './dto/createInstrument.dto';
 
 const SEARCH_LIMIT = 50;
+
+export interface InstrumentSearch {
+  ticker?: string;
+  name?: string;
+}
 
 @Injectable()
 export class InstrumentsService {
@@ -43,12 +54,13 @@ export class InstrumentsService {
     );
   }
 
-  async search(query?: string): Promise<InstrumentQuote[]> {
-    const pattern = query ? `%${escapeLike(query)}%` : undefined;
+  async search(filters: InstrumentSearch = {}): Promise<InstrumentQuote[]> {
+    const where: FindOptionsWhere<InstrumentQuoteView> = {};
+    if (filters.ticker) where.ticker = ILike(contains(filters.ticker));
+    if (filters.name) where.name = ILike(contains(filters.name));
+
     const rows = await this.dataSource.getRepository(InstrumentQuoteView).find({
-      where: pattern
-        ? [{ ticker: ILike(pattern) }, { name: ILike(pattern) }]
-        : {},
+      where,
       order: { ticker: 'ASC' },
       take: SEARCH_LIMIT,
     });
@@ -86,7 +98,7 @@ function toQuote(row: InstrumentQuoteView): InstrumentQuote {
   });
 }
 
-/** Makes % and _ in user input match literally instead of acting as wildcards. */
-function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
+/** A LIKE pattern for `value` anywhere; % and _ in it match literally, not as wildcards. */
+function contains(value: string): string {
+  return `%${value.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
 }

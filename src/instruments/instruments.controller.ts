@@ -1,5 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
+import { toPercent } from '../shared/http/percent';
 import { InstrumentQuote } from './domain/instrumentQuote.valueObject';
+import { SearchInstrumentsDto } from './dto/searchInstruments.dto';
 import { InstrumentsService } from './instruments.service';
 
 export interface InstrumentQuoteResponse {
@@ -9,7 +11,7 @@ export interface InstrumentQuoteResponse {
   type: string;
   close: number | null;
   previousClose: number | null;
-  dailyReturn: number | null;
+  dailyReturn: number | null; // percent
 }
 
 /** Public, read-only instrument endpoints. Writes live in ReferenceDataController. */
@@ -17,9 +19,15 @@ export interface InstrumentQuoteResponse {
 export class InstrumentsController {
   constructor(private readonly instruments: InstrumentsService) {}
 
+  /** GET /instruments?ticker=…&name=… — blank filters are ignored. */
   @Get()
-  async search(@Query('q') q?: string): Promise<InstrumentQuoteResponse[]> {
-    const quotes = await this.instruments.search(q?.trim() || undefined);
+  async search(
+    @Query() query: SearchInstrumentsDto,
+  ): Promise<InstrumentQuoteResponse[]> {
+    const quotes = await this.instruments.search({
+      ticker: query.ticker?.trim() || undefined,
+      name: query.name?.trim() || undefined,
+    });
     return quotes.map(toQuoteResponse);
   }
 }
@@ -32,6 +40,6 @@ function toQuoteResponse(quote: InstrumentQuote): InstrumentQuoteResponse {
     type: quote.type,
     close: quote.close,
     previousClose: quote.previousClose,
-    dailyReturn: quote.dailyReturn(),
+    dailyReturn: toPercent(quote.dailyReturn()),
   };
 }

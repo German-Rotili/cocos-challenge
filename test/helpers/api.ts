@@ -58,8 +58,17 @@ export async function createUser(): Promise<number> {
   return res.body.id;
 }
 
+export interface InstrumentSearch {
+  ticker?: string;
+  name?: string;
+}
+
+export function searchInstruments(query: InstrumentSearch): Promise<Response> {
+  return http().get('/instruments').query(query);
+}
+
 export async function findInstrument(ticker: string): Promise<KnownInstrument> {
-  const res = await http().get('/instruments').query({ q: ticker }).expect(200);
+  const res = await http().get('/instruments').query({ ticker }).expect(200);
   const match = res.body.find((i: { ticker: string }) => i.ticker === ticker);
   if (!match)
     throw new Error(`Search for "${ticker}" returned no exact ticker match`);

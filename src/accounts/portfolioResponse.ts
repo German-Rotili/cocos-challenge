@@ -1,3 +1,4 @@
+import { toPercent } from '../shared/http/percent';
 import type { Portfolio } from './domain/account.aggregate';
 import type { PositionValuation } from './domain/position.valueObject';
 
@@ -37,8 +38,4 @@ function toPositionResponse(position: PositionValuation): PositionResponse {
     totalReturn: toPercent(position.totalReturn),
     dailyReturn: toPercent(position.dailyReturn),
   };
-}
-
-function toPercent(ratio: number | null): number | null {
-  return ratio == null ? null : Math.round(ratio * 10_000) / 100;
 }

@@ -12,6 +12,8 @@ const config: Config = {
   setupFilesAfterEnv: ['<rootDir>/test/helpers/jest.setup.ts'],
   testTimeout: 15000,
 
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.spec.ts'],
+
   maxWorkers: 1,
 };
 export default config;
