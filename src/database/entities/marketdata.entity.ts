@@ -56,3 +56,4 @@ export class MarketData {
   @Column({ type: 'timestamp' })
   datetime!: Date;
 }
+
