@@ -35,12 +35,10 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# dotenv environment variable files
+# dotenv: .env.<APP_ENV> is committed (no secrets); .env.<APP_ENV>.local holds secrets and overrides
 .env
-.env.development.local
-.env.test.local
-.env.production.local
 .env.local
+.env.*.local
 .env.prod
 
 # temp directory

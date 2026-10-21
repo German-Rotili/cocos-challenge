@@ -1,6 +1,7 @@
-import { config } from 'dotenv';
+import { loadEnvFiles } from '../../src/shared/config/environment';
 
-config({ path: '.env.test', quiet: true, override: true });
+// Always test, whatever the shell says; override so the files beat exported variables.
+loadEnvFiles({ appEnv: 'test', override: true });
 
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error('DATABASE_URL is not set (check .env.test)');
@@ -13,4 +14,3 @@ if (!['localhost', '127.0.0.1'].includes(hostname)) {
 }
 
 process.env.NODE_ENV = 'test';
-process.env.DATABASE_URL = url;
