@@ -1,6 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-/** Mirrors db/init/database.sql. */
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn()

@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -16,6 +17,7 @@ const price = {
 } as const;
 
 @Entity('marketdata')
+@Index(['instrumentId', 'datetime', 'id'])
 export class MarketData {
   @PrimaryGeneratedColumn()
   id!: number;

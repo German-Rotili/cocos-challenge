@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -12,8 +13,8 @@ export type OrderSide = 'BUY' | 'SELL' | 'CASH_IN' | 'CASH_OUT';
 export type OrderType = 'MARKET' | 'LIMIT';
 export type OrderStatus = 'NEW' | 'FILLED' | 'REJECTED' | 'CANCELLED';
 
-/** Mirrors db/init/database.sql. */
 @Entity('orders')
+@Index(['userId', 'datetime', 'id'])
 export class Order {
   @PrimaryGeneratedColumn()
   id!: number;
