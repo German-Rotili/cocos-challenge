@@ -22,10 +22,10 @@
     "test:feature": "NODE_OPTIONS=--experimental-vm-modules jest --testPathPatterns steps",
     "test:unit": "NODE_OPTIONS=--experimental-vm-modules jest --testPathPatterns spec",
     "test:cov": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
-    "migration:generate": "sh -c 'typeorm-ts-node-commonjs migration:generate -d db/dataSource.ts --pretty \"db/migrations/${1:?Usage: npm run migration:generate -- <Name>}\"' --",
+    "migration:generate": "APP_ENV=${APP_ENV:-dev} sh -c 'typeorm-ts-node-commonjs migration:generate -d db/dataSource.ts --pretty \"db/migrations/${1:?Usage: npm run migration:generate -- <Name>}\"' --",
     "migration:create": "sh -c 'typeorm-ts-node-commonjs migration:create \"db/migrations/${1:?Usage: npm run migration:create -- <Name>}\"' --",
-    "migration:run": "typeorm-ts-node-commonjs migration:run -d db/dataSource.ts",
-    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d db/dataSource.ts"
+    "migration:run": "APP_ENV=${APP_ENV:-dev} typeorm-ts-node-commonjs migration:run -d db/dataSource.ts",
+    "migration:revert": "APP_ENV=${APP_ENV:-dev} typeorm-ts-node-commonjs migration:revert -d db/dataSource.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

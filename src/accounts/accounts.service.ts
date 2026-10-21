@@ -4,7 +4,8 @@ import { Order as OrderEntity } from '../database/entities/order.entity';
 import { User as UserEntity } from '../database/entities/user.entity';
 import type { InstrumentQuote } from '../instruments/domain/instrumentQuote.valueObject';
 import { InstrumentsService } from '../instruments/instruments.service';
-import { Account, Portfolio } from './domain/account.aggregate';
+import { Account } from './domain/account.aggregate';
+import { Portfolio } from './domain/portfolio.valueObject';
 import { OrderNotFoundError, UserNotFoundError } from './domain/errors';
 import { Order } from './domain/order.domainEntity';
 import type {
@@ -80,8 +81,10 @@ export class AccountsService {
         const account = await this.loadAccount(manager, userId, {
           lock: false,
         });
-        const ids = account.positions().map((p) => p.instrumentId);
-        return account.portfolio(
+        const holdings = account.holdings();
+        const ids = holdings.positions.map((p) => p.instrumentId);
+        return Portfolio.value(
+          holdings,
           await this.instruments.findQuotes(ids, manager),
         );
       },

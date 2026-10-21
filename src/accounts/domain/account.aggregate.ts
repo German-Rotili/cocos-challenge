@@ -6,13 +6,13 @@ import {
   TradeInput,
   TransferInput,
 } from './orderTicket.valueObject';
-import { Position, PositionValuation } from './position.valueObject';
+import { Position } from './position.valueObject';
 
-export interface Portfolio {
+export interface Holdings {
   userId: number;
-  totalValue: number;
   availableCash: number;
-  positions: PositionValuation[];
+  settledCash: number;
+  positions: Position[];
 }
 
 export class Account {
@@ -69,23 +69,12 @@ export class Account {
     return [...byInstrument.values()].filter((p) => p.isOpen);
   }
 
-  portfolio(quotes: ReadonlyMap<number, InstrumentQuote>): Portfolio {
-    const positions = this.positions().map((position) => {
-      const quote = quotes.get(position.instrumentId);
-      if (!quote)
-        throw new Error(`No quote for instrument ${position.instrumentId}`);
-      return position.valuedAt(quote);
-    });
-    const positionsValue = positions.reduce(
-      (sum, p) => sum + (p.marketValue ?? 0),
-      0,
-    );
-
+  holdings(): Holdings {
     return {
       userId: this.userId,
-      totalValue: this.settledCash + positionsValue,
       availableCash: this.availableCash,
-      positions,
+      settledCash: this.settledCash,
+      positions: this.positions(),
     };
   }
 

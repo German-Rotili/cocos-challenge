@@ -1,5 +1,5 @@
 import { toPercent } from '../../shared/http/percent';
-import type { Portfolio } from '../domain/account.aggregate';
+import type { Portfolio } from '../domain/portfolio.valueObject';
 import type { PositionValuation } from '../domain/position.valueObject';
 
 // ---------- Response ----------
