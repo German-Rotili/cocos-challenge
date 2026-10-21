@@ -7,15 +7,9 @@ import {
   Post,
 } from '@nestjs/common';
 import { AccountsService } from './accounts.service';
-import { CreateUserDto } from './dto/createUser.dto';
-import { OrderResponse, toOrderResponse } from './orderResponse';
-import { PortfolioResponse, toPortfolioResponse } from './portfolioResponse';
-
-export interface UserResponse {
-  id: number;
-  email: string;
-  accountNumber: string;
-}
+import { OrderResponse, toOrderResponse } from './dto/order.dto';
+import { PortfolioResponse, toPortfolioResponse } from './dto/portfolio.dto';
+import { CreateUserDto, toUserResponse, UserResponse } from './dto/user.dto';
 
 /** A user and their account are one-to-one, so account resources hang off /users/:id. */
 @Controller('users')
@@ -24,12 +18,7 @@ export class UsersController {
 
   @Post()
   async create(@Body() dto: CreateUserDto): Promise<UserResponse> {
-    const user = await this.accounts.createUser(dto);
-    return {
-      id: user.id,
-      email: user.email,
-      accountNumber: user.accountNumber,
-    };
+    return toUserResponse(await this.accounts.createUser(dto));
   }
 
   @Get(':id/orders')

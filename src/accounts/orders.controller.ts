@@ -11,8 +11,7 @@ import {
 import { AccountsService } from './accounts.service';
 import type { TradeSide } from './domain/order.domainEntity';
 import type { TradeInput } from './domain/orderTicket.valueObject';
-import { SendOrderDto } from './dto/sendOrder.dto';
-import { OrderResponse, toOrderResponse } from './orderResponse';
+import { OrderResponse, SendOrderDto, toOrderResponse } from './dto/order.dto';
 
 @Controller('orders')
 export class OrdersController {

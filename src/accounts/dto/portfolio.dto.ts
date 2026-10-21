@@ -1,6 +1,8 @@
-import { toPercent } from '../shared/http/percent';
-import type { Portfolio } from './domain/account.aggregate';
-import type { PositionValuation } from './domain/position.valueObject';
+import { toPercent } from '../../shared/http/percent';
+import type { Portfolio } from '../domain/account.aggregate';
+import type { PositionValuation } from '../domain/position.valueObject';
+
+// ---------- Response ----------
 
 export interface PositionResponse {
   instrumentId: number;

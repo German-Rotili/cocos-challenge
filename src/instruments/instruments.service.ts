@@ -11,8 +11,8 @@ import { InstrumentQuoteView } from '../database/views/instrumentQuote.view';
 import { MarketData as MarketDataEntity } from '../database/entities/marketData.entity';
 import { InstrumentNotFoundError } from './domain/errors';
 import { InstrumentQuote } from './domain/instrumentQuote.valueObject';
-import { AddMarketDataDto } from './dto/addMarketData.dto';
-import { CreateInstrumentDto } from './dto/createInstrument.dto';
+import { CreateInstrumentDto } from './dto/instrument.dto';
+import { AddMarketDataDto } from './dto/marketData.dto';
 
 const SEARCH_LIMIT = 50;
 

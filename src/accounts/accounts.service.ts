@@ -11,7 +11,7 @@ import type {
   TradeInput,
   TransferInput,
 } from './domain/orderTicket.valueObject';
-import { CreateUserDto } from './dto/createUser.dto';
+import { CreateUserDto } from './dto/user.dto';
 import { toDomainOrder, toOrderRow } from './persistence/orderMapper';
 
 @Injectable()
@@ -26,7 +26,6 @@ export class AccountsService {
     return repository.save(repository.create(dto));
   }
 
-  /** BUY or SELL. Returns the saved order: FILLED, NEW or REJECTED. */
   placeTrade(
     userId: number,
     instrumentId: number,
@@ -37,7 +36,6 @@ export class AccountsService {
     );
   }
 
-  /** CASH_IN or CASH_OUT, on the cash instrument. Returns the saved order: FILLED or REJECTED. */
   transfer(
     userId: number,
     instrumentId: number,
@@ -90,11 +88,6 @@ export class AccountsService {
     );
   }
 
-  /**
-   * Builds the aggregate from all of the user's orders, as the spec asks.
-   * Rejected and cancelled orders have no effect on balances but are loaded
-   * so the aggregate can answer for any of its orders (e.g. refuse to cancel them).
-   */
   private async loadAccount(
     manager: EntityManager,
     userId: number,
@@ -105,10 +98,6 @@ export class AccountsService {
     return Account.restore(userId, rows.map(toDomainOrder));
   }
 
-  /**
-   * Shared flow for anything that adds an order: lock and load the account,
-   * read the price inside the same transaction, let the aggregate decide, save.
-   */
   private submit(
     userId: number,
     instrumentId: number,
